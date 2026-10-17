@@ -174,7 +174,9 @@ type ProduceInput = {
 async function produce(input: ProduceInput): Promise<{ html: string; summary: string; model: string }> {
   const { ctx, sources } = input;
   if (input.mode === "mock") {
-    const source = sources[0] ?? pickSource(ctx.request, ctx.sources);
+    // Revisions keep the app's own data unless the triage picked new sources.
+    const own = input.revise ? ctx.sources.find((s) => input.revise!.app.sourceKeys.includes(s.key)) : undefined;
+    const source = sources[0] ?? own ?? pickSource(ctx.request, ctx.sources);
     const out = mockBuild({
       title: input.revise?.app.title ?? input.build!.title,
       request: ctx.request,

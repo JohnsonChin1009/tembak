@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Hash } from "lucide-react";
+import { Hash, Menu } from "lucide-react";
 import { AppCard, AppChip } from "@/components/builder/app-card";
 import { BuilderPanel } from "@/components/builder/builder-panel";
 import { ChannelView } from "@/components/chat/channel-view";
@@ -29,6 +29,7 @@ export function ChannelScope({
   appsUrl,
   initialOpen,
   openRequest,
+  onOpenNav,
   onAppsStale,
   renderPanelActions,
 }: {
@@ -39,6 +40,7 @@ export function ChannelScope({
   initialOpen: OpenApp | null;
   /** Ask to open an app from outside (sidebar); a new nonce re-opens it. */
   openRequest?: { appId: string; nonce: number } | null;
+  onOpenNav?: () => void;
   onAppsStale: () => void;
   renderPanelActions?: (app: App, version: number) => React.ReactNode;
 }) {
@@ -104,6 +106,9 @@ export function ChannelScope({
     <div ref={containerRef} className="flex min-w-0 flex-1">
       <main className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-5">
+          <button onClick={onOpenNav} className="-ml-2 rounded-md p-1.5 text-muted hover:bg-hover md:hidden" aria-label="Open menu">
+            <Menu className="size-4" />
+          </button>
           <Hash className="size-4 text-faint" />
           <h1 className="font-semibold">{channel.name}</h1>
           {channel.topic ? <p className="ml-2 truncate text-sm text-faint">{channel.topic}</p> : null}
