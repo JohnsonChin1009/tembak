@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { randomId } from "@/lib/ids";
 import type { AppRef, Message, User } from "@/lib/types";
 
@@ -16,8 +16,19 @@ function merge(list: Pending[], incoming: Message[]): Pending[] {
  * Live message list for one channel: SSE snapshot + updates, with optimistic sends.
  * Mount it under a `key` of the channel id so switching channels starts fresh.
  */
-export function useChannel(channelId: string, user: User) {
+export function useChannel(
+  channelId: string,
+  user: User,
+  /** Called for each live update (not the initial snapshot) with the previous copy, if any. */
+  onUpdate?: (message: Message, previous: Message | undefined) => void,
+) {
   const [messages, setMessages] = useState<Pending[]>([]);
+  const latest = useRef<Pending[]>([]);
+  const onUpdateRef = useRef(onUpdate);
+  useEffect(() => {
+    onUpdateRef.current = onUpdate;
+    latest.current = messages;
+  });
   const [loaded, setLoaded] = useState(false);
   const [connected, setConnected] = useState(false);
 
@@ -31,6 +42,7 @@ export function useChannel(channelId: string, user: User) {
     });
     es.addEventListener("message", (e) => {
       const m = JSON.parse((e as MessageEvent).data) as Message;
+      onUpdateRef.current?.(m, latest.current.find((x) => x.id === m.id));
       setMessages((prev) => merge(prev, [m]));
     });
     es.onopen = () => setConnected(true);
