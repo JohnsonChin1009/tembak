@@ -36,6 +36,10 @@ export interface Store {
   getVersion(appId: string, n: number): Promise<AppVersion | null>;
   listVersions(appId: string): Promise<AppVersionMeta[]>;
 
+  /** Small JSON values that generated apps persist through `tembak.kv`. */
+  getKv(appId: string, key: string): Promise<unknown | null>;
+  setKv(appId: string, key: string, value: unknown): Promise<void>;
+
   listSources(): Promise<Source[]>;
   getSource(id: string): Promise<Source | null>;
   getSourceByKey(key: string): Promise<Source | null>;

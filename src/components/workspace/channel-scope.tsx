@@ -65,7 +65,8 @@ export function ChannelScope({
       if (m.author.kind !== "agent" || m.status !== "done" || !m.appRef) return;
       if (prev?.status === "done" && prev.appRef?.version === m.appRef.version) return;
       const known = appsRef.current.get(m.appRef.appId);
-      if (!known || known.latestVersion < m.appRef.version) onAppsStale();
+      // New versions and publishes both change app metadata.
+      if (!prev || !known || known.latestVersion < m.appRef.version) onAppsStale();
       const trigger = messagesRef.current.find((x) => x.id === m.replyTo);
       if (trigger?.author.kind === "user" && trigger.author.uid === user.uid) {
         setOpen({ appId: m.appRef.appId, version: m.appRef.version });

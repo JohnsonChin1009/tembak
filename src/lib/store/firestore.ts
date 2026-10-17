@@ -115,6 +115,21 @@ export class FirestoreStore implements Store {
     return snap.docs.map((d) => d.data() as AppVersionMeta);
   }
 
+  async getKv(appId: string, key: string) {
+    const snap = await this.db.collection("apps").doc(appId).collection("kv").doc(key).get();
+    if (!snap.exists) return null;
+    // Stored as a JSON string so arbitrary shapes (nested arrays) survive Firestore.
+    return JSON.parse((snap.data() as { json: string }).json) as unknown;
+  }
+  async setKv(appId: string, key: string, value: unknown) {
+    await this.db
+      .collection("apps")
+      .doc(appId)
+      .collection("kv")
+      .doc(key)
+      .set({ json: JSON.stringify(value), updatedAt: Date.now() });
+  }
+
   async listSources() {
     const snap = await this.db.collection("sources").get();
     return snap.docs
