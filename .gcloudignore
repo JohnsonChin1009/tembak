@@ -1,0 +1,11 @@
+# Files excluded from `gcloud run deploy --source` uploads.
+.git
+.gitignore
+node_modules/
+.next/
+.env
+.env.*
+!.env.example
+deploy.env
+*.log
+.DS_Store
