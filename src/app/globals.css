@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+  --bg: #0b0c0e;
+  --panel: #101215;
+  --raised: #16191d;
+  --hover: #1c1f24;
+  --line: #22262c;
+  --line-strong: #2e333a;
+  --fg: #e9ebee;
+  --muted: #9ba1a8;
+  --faint: #656b73;
+  --accent: #c6f432;
+  --accent-dim: #c6f43226;
+  --accent-ink: #0b0c0e;
+  --danger: #ff6b6b;
+  --warn: #f5b84a;
+  --info: #7cc4ff;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-raised: var(--raised);
+  --color-hover: var(--hover);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-accent-dim: var(--accent-dim);
+  --color-accent-ink: var(--accent-ink);
+  --color-danger: var(--danger);
+  --color-warn: var(--warn);
+  --color-info: var(--info);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html,
+body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+body {
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@keyframes tembak-pulse {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+.dot-pulse > span {
+  animation: tembak-pulse 1.2s ease-in-out infinite;
+}
+.dot-pulse > span:nth-child(2) { animation-delay: 0.15s; }
+.dot-pulse > span:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes tembak-sheen {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+.sheen {
+  background: linear-gradient(90deg, var(--muted) 0%, var(--fg) 50%, var(--muted) 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: tembak-sheen 2.4s linear infinite;
+}
+
+/* Agent markdown */
+.md > * + * { margin-top: 0.5rem; }
+.md ul { list-style: disc; padding-left: 1.25rem; }
+.md ol { list-style: decimal; padding-left: 1.25rem; }
+.md li + li { margin-top: 0.15rem; }
+.md a { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.md code {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.85em;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.05rem 0.3rem;
+}
+.md strong { color: var(--fg); font-weight: 600; }
+.md h1, .md h2, .md h3 { font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dot-pulse > span, .sheen { animation: none; }
+}
