@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowDown, Sparkles } from "lucide-react";
 import type { AppRef, Channel } from "@/lib/types";
 import { Composer, type ComposerHandle } from "./composer";
@@ -43,6 +43,19 @@ export function ChannelView({
     }
   }, [messages]);
 
+  // Stay pinned to the bottom when layout changes (panel opens, text reflows).
+  const content = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el || !content.current) return;
+    const ro = new ResizeObserver(() => {
+      if (atBottom.current) el.scrollTop = el.scrollHeight;
+    });
+    ro.observe(el);
+    ro.observe(content.current);
+    return () => ro.disconnect();
+  }, []);
+
   function onScroll() {
     const el = scroller.current;
     if (!el) return;
@@ -62,7 +75,7 @@ export function ChannelView({
       <div ref={scroller} onScroll={onScroll} className="flex-1 overflow-y-auto pb-4">
         {loaded && messages.length === 0 ? <EmptyChannel channel={channel} /> : null}
         {!loaded ? <LoadingRows /> : null}
-        <div className="pt-4">
+        <div ref={content} className="pt-4">
           {messages.map((m, i) => {
             const prev = messages[i - 1];
             const grouped =
@@ -104,7 +117,11 @@ export function ChannelView({
           ref={composer}
           autoFocus
           placeholder={`Message #${channel.name}. Tag @tembak to build something`}
-          onSend={(text) => send(text)}
+          onSend={(text) => {
+            atBottom.current = true;
+            setUnseen(false);
+            return send(text);
+          }}
         />
         <p className="mt-1.5 px-1 text-[11px] text-faint">
           <kbd className="font-mono">Enter</kbd> to send · <kbd className="font-mono">Shift+Enter</kbd> for a new line

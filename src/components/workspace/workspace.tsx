@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppWindow } from "lucide-react";
 import { PublishControls } from "@/components/builder/publish-controls";
-import type { App, Channel, User } from "@/lib/types";
+import { DataSection } from "@/components/data/data-section";
+import type { App, Channel, Source, User } from "@/lib/types";
 import { ChannelScope, type OpenApp } from "./channel-scope";
 import { Section, Sidebar } from "./sidebar";
 
@@ -13,21 +14,26 @@ export function Workspace({
   user,
   channels: initialChannels,
   apps: initialApps,
+  sources: initialSources,
   channelId,
   appsUrl,
+  serviceAccountEmail,
   initialOpen,
 }: {
   user: User;
   channels: Channel[];
   apps: App[];
+  sources: Source[];
   channelId: string;
   appsUrl: string;
+  serviceAccountEmail?: string;
   agentMode: "mock" | "gemini";
   initialOpen: OpenApp | null;
 }) {
   const router = useRouter();
   const [channels, setChannels] = useState(initialChannels);
   const [apps, setApps] = useState(initialApps);
+  const [sources, setSources] = useState(initialSources);
   const [openRequest, setOpenRequest] = useState<{ appId: string; nonce: number } | null>(null);
   const channel = channels.find((c) => c.id === channelId);
 
@@ -70,6 +76,7 @@ export function Workspace({
             </Link>
           ))}
         </Section>
+        <DataSection sources={sources} serviceAccountEmail={serviceAccountEmail} onChange={setSources} />
       </Sidebar>
       {channel ? (
         <ChannelScope

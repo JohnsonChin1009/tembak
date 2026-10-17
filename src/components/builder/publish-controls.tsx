@@ -81,11 +81,9 @@ export function PublishControls({
           {busy ? <LoaderCircle className="size-3.5 animate-spin" /> : <Rocket className="size-3.5" />}
           {live ? `Update live to v${version}` : "Publish"}
         </button>
-      ) : (
-        <span className="ml-1 flex h-8 items-center gap-1.5 rounded-lg border border-accent/30 bg-accent-dim px-3 text-sm font-medium text-accent">
-          {copied ? "Link copied" : "Live"}
-        </span>
-      )}
+      ) : copied ? (
+        <span className="ml-1 text-xs font-medium text-accent">Link copied</span>
+      ) : null}
     </div>
   );
 }

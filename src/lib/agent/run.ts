@@ -1,6 +1,7 @@
 import "server-only";
 import { addAppVersion, createApp } from "@/lib/apps";
 import { config } from "@/lib/config";
+import { sourcesFromMessage } from "@/lib/data/sources";
 import { SAMPLE_DATASETS } from "@/lib/data/samples";
 import { randomId } from "@/lib/ids";
 import { getStore } from "@/lib/store";
@@ -63,7 +64,15 @@ export async function startAgentRun(trigger: Message): Promise<void> {
 }
 
 async function run(trigger: Message, update: (patch: Update) => Promise<void>) {
+  const createdBy = trigger.author.kind === "user" ? trigger.author.uid : "agent";
+  const linked = await sourcesFromMessage(trigger.text, createdBy);
+  if (linked.created.length || linked.failed.length) {
+    await update({ statusLine: linked.created.length ? "Connected your sheet. Reading the conversation..." : "Reading the conversation..." });
+  }
   const ctx = await buildContext(trigger);
+  if (linked.failed.length) {
+    ctx.request += `\n\n(Note for Tembak: the linked sheet couldn't be read. Tell the user to share it with the Tembak service account or make it viewable by link, and use sample data meanwhile.)`;
+  }
   const mode = config().agentMode;
   const triage = mode === "gemini" ? await geminiTriage(ctx) : await delayed(mockTriage(ctx), 700);
 
@@ -73,7 +82,6 @@ async function run(trigger: Message, update: (patch: Update) => Promise<void>) {
   }
 
   const sources = resolveSources(triage.sourceKeys, ctx.sources);
-  const createdBy = trigger.author.kind === "user" ? trigger.author.uid : "agent";
 
   if (triage.action === "revise") {
     const app = ctx.channelApps.find((a) => a.id === triage.appId) ?? ctx.targetApp;
