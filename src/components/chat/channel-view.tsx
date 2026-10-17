@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { ArrowDown, Sparkles } from "lucide-react";
-import type { AppRef, Channel, User } from "@/lib/types";
+import type { AppRef, Channel } from "@/lib/types";
 import { Composer, type ComposerHandle } from "./composer";
 import { MessageItem } from "./message-item";
-import { useChannel, type ChannelMessage } from "./use-channel";
+import type { ChannelMessage } from "./use-channel";
 
 const GROUP_WINDOW_MS = 5 * 60_000;
 
@@ -17,27 +17,21 @@ const STARTERS = [
 
 export function ChannelView({
   channel,
-  user,
+  messages,
+  loaded,
+  send,
   renderAppRef,
-  onMessages,
-  composerRef,
 }: {
   channel: Channel;
-  user: User;
+  messages: ChannelMessage[];
+  loaded: boolean;
+  send: (text: string) => Promise<void>;
   renderAppRef?: (ref: AppRef, message: ChannelMessage) => React.ReactNode;
-  onMessages?: (messages: ChannelMessage[]) => void;
-  composerRef?: React.RefObject<ComposerHandle | null>;
 }) {
-  const { messages, loaded, send } = useChannel(channel.id, user);
   const scroller = useRef<HTMLDivElement>(null);
   const atBottom = useRef(true);
   const [unseen, setUnseen] = useState(false);
-  const localComposer = useRef<ComposerHandle>(null);
-  const composer = composerRef ?? localComposer;
-
-  useEffect(() => {
-    onMessages?.(messages);
-  }, [messages, onMessages]);
+  const composer = useRef<ComposerHandle>(null);
 
   useLayoutEffect(() => {
     const el = scroller.current;

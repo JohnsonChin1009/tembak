@@ -100,9 +100,9 @@ const PALETTE = [CFG.accent, "#64748b", "#a8a29e", "#0ea5e9", "#f59e0b", "#10b98
 let rows = [], filtered = [], sortCol = null, sortDir = -1, charts = [];
 
 async function load() {
-  if (CFG.sourceKey && window.tembak) {
-    try { return await window.tembak.data(CFG.sourceKey); }
-    catch (e) { console.warn("data source failed, using sample", e); }
+  if (CFG.sourceKey) {
+    if (!window.tembak) throw new Error("Data runtime unavailable");
+    return await window.tembak.data(CFG.sourceKey);
   }
   document.getElementById("sample-badge").classList.remove("hidden");
   return CFG.sample;
