@@ -24,7 +24,8 @@ Server-only, read once from env, validated with zod.
 | `APPS_URL` | `APP_URL` | Public origin for published apps, e.g. `https://apps.example.com` |
 | `ALLOWED_EMAIL_DOMAINS` | (none) | Comma list; empty means any Google account |
 | `SESSION_SECRET` | dev value | HMAC key for dev-mode session cookies |
-| `NEXT_PUBLIC_FIREBASE_*` | (none) | Web config for client Google sign-in (firebase mode only) |
+| `FIREBASE_WEB_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID` | (none) | Web config for client Google sign-in, passed to the login page at runtime (no build-time env) |
+| `SERVICE_ACCOUNT_EMAIL` | (none) | Shown in the Add Sheet dialog |
 
 ### Store (`src/lib/store/`)
 
@@ -58,7 +59,7 @@ sources/{sourceId}
   POSTs the ID token to `/api/session`, and the server verifies it and creates a Firebase
   session cookie (5 days). `ALLOWED_EMAIL_DOMAINS` is enforced here.
 - `getSessionUser()` is used by server components and route handlers. It returns `null` if signed out.
-- Middleware redirects signed-out users from `/` to `/login`. It skips `/a/*` and `/api/public/*`.
+- Proxy (`src/proxy.ts`, Next 16's renamed middleware) redirects signed-out users from `/` to `/login`. It skips `/a/*` and `/api/public/*`.
 
 ### UI shell
 

@@ -35,8 +35,9 @@ const schema = z.object({
 function load() {
   const env = schema.parse(process.env);
   const useVertex = env.GOOGLE_GENAI_USE_VERTEXAI === "true";
-  const agentMode =
-    env.AGENT_MODE ?? (env.GEMINI_API_KEY || useVertex ? "gemini" : "mock");
+  // setup-gcp.sh stores "unset" when no key was provided.
+  const apiKey = env.GEMINI_API_KEY && env.GEMINI_API_KEY !== "unset" ? env.GEMINI_API_KEY : undefined;
+  const agentMode = env.AGENT_MODE ?? (apiKey || useVertex ? "gemini" : "mock");
   const appUrl = env.APP_URL.replace(/\/$/, "");
   const appsUrl = (env.APPS_URL ?? appUrl).replace(/\/$/, "");
 
@@ -52,7 +53,7 @@ function load() {
     authMode: env.AUTH_MODE,
     agentMode,
     gemini: {
-      apiKey: env.GEMINI_API_KEY,
+      apiKey,
       useVertex,
       project: env.GOOGLE_CLOUD_PROJECT ?? env.FIREBASE_PROJECT_ID,
       location: env.GOOGLE_CLOUD_LOCATION,

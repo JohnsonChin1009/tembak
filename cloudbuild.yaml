@@ -1,0 +1,33 @@
+# Optional CI: build and roll out on push to main via a Cloud Build trigger.
+# Console > Cloud Build > Triggers > Create, point at this file, and set the
+# substitutions below. The service's env vars and secrets set by
+# scripts/deploy.sh are kept; this only swaps the image.
+substitutions:
+  _REGION: asia-southeast1
+  _SERVICE: tembak
+  _REPO: cloud-run-source-deploy
+
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -t
+      - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA
+      - .
+  - name: gcr.io/cloud-builders/docker
+    args: [push, "${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA"]
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - ${_SERVICE}
+      - --image=${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA
+      - --region=${_REGION}
+      - --quiet
+
+images:
+  - ${_REGION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:$SHORT_SHA
+
+options:
+  logging: CLOUD_LOGGING_ONLY

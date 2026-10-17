@@ -21,7 +21,7 @@ Route handler (not a page) returns the published version's HTML with:
 - `Cache-Control: public, max-age=30`
 - `X-Robots-Tag: noindex`
 
-If `APPS_URL` has a different host from `APP_URL`, middleware serves only `/a/*`,
+If `APPS_URL` has a different host from `APP_URL`, the proxy serves only `/a/*`,
 `/api/public/*`, and `/_next/static` on the apps host (everything else 404s),
 and the workspace host redirects `/a/*` to the apps host. With one domain
 everything still works thanks to the CSP sandbox.
