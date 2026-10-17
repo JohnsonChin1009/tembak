@@ -119,6 +119,14 @@ function analyze(data) {
 }
 
 function sum(data, c) { return data.reduce((a, r) => a + (typeof r[c] === "number" ? r[c] : 0), 0); }
+const AVG_RE = /hour|rate|ratio|score|csat|nps|avg|average|percent|pct|time|days|age|rating/i;
+// Totals for counts and money; averages for durations, scores, and rates.
+function agg(data, c) {
+  if (!AVG_RE.test(c)) return sum(data, c);
+  const vals = data.map((r) => r[c]).filter((v) => typeof v === "number");
+  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+}
+const aggLabel = (c) => (AVG_RE.test(c) ? "Avg " + label(c).toLowerCase() : label(c));
 
 function pick(metrics, patterns) {
   for (const p of patterns) { const hit = metrics.find((c) => p.test(c)); if (hit) return hit; }
@@ -137,9 +145,9 @@ function renderKpis(meta) {
     tiles.push([label(spend), fmt(spend, s)], [label(conv), fmt(conv, v)],
       ["Cost per " + label(conv).replace(/s$/i, "").toLowerCase(), v ? money2.format(s / v) : "—"]);
     const other = m.find((c) => c !== spend && c !== conv);
-    if (other) tiles.push([label(other), fmt(other, sum(filtered, other))]);
+    if (other) tiles.push([aggLabel(other), fmt(other, agg(filtered, other))]);
   } else {
-    for (const c of m.slice(0, 4)) tiles.push([label(c), fmt(c, sum(filtered, c))]);
+    for (const c of m.slice(0, 4)) tiles.push([aggLabel(c), fmt(c, agg(filtered, c))]);
   }
   if (tiles.length < 4) tiles.unshift(["Records", nf.format(filtered.length)]);
   el.innerHTML = tiles.slice(0, 4).map(([k, v], i) => \`
@@ -163,11 +171,11 @@ function renderCharts(meta) {
     const groups = meta.catCol ? [...new Set(filtered.map((r) => r[meta.catCol]))] : [null];
     const datasets = groups.slice(0, 7).map((g, i) => ({
       label: g ?? label(metric),
-      data: dates.map((d) => sum(filtered.filter((r) => r[meta.dateCol] === d && (g == null || r[meta.catCol] === g)), metric)),
+      data: dates.map((d) => agg(filtered.filter((r) => r[meta.dateCol] === d && (g == null || r[meta.catCol] === g)), metric)),
       borderColor: PALETTE[i % PALETTE.length], backgroundColor: PALETTE[i % PALETTE.length] + "22",
       tension: 0.35, borderWidth: i === 0 ? 2.5 : 1.5, pointRadius: 0, fill: groups.length === 1,
     }));
-    document.getElementById("trend-title").textContent = label(metric) + " over time" + (meta.catCol ? " by " + label(meta.catCol).toLowerCase() : "");
+    document.getElementById("trend-title").textContent = aggLabel(metric) + " over time" + (meta.catCol ? " by " + label(meta.catCol).toLowerCase() : "");
     charts.push(new Chart(document.getElementById("trend"), {
       type: "line", data: { labels: dates, datasets },
       options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
@@ -184,12 +192,12 @@ function renderCharts(meta) {
     const ratio = second !== metric;
     const values = cats.map((c) => {
       const sub = filtered.filter((r) => r[cat] === c);
-      return ratio ? (sum(sub, metric) ? sum(sub, second) / sum(sub, metric) : 0) : sum(sub, metric);
+      return ratio ? (sum(sub, metric) ? sum(sub, second) / sum(sub, metric) : 0) : agg(sub, metric);
     });
     const order = cats.map((c, i) => [c, values[i]]).sort((a, b) => b[1] - a[1]);
     document.getElementById("bar-title").textContent = ratio
       ? label(second) + " per " + label(metric).replace(/s$/i, "").toLowerCase() + " by " + label(cat).toLowerCase()
-      : label(metric) + " by " + label(cat).toLowerCase();
+      : aggLabel(metric) + " by " + label(cat).toLowerCase();
     charts.push(new Chart(document.getElementById("bars"), {
       type: "bar",
       data: { labels: order.map((o) => o[0]), datasets: [{ data: order.map((o) => o[1]), backgroundColor: order.map((_, i) => i === 0 ? CFG.accent : "#cbd5e1"), borderRadius: 6 }] },

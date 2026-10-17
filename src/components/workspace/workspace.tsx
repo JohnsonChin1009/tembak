@@ -34,6 +34,7 @@ export function Workspace({
   const [channels, setChannels] = useState(initialChannels);
   const [apps, setApps] = useState(initialApps);
   const [sources, setSources] = useState(initialSources);
+  const [navOpen, setNavOpen] = useState(false);
   const [openRequest, setOpenRequest] = useState<{ appId: string; nonce: number } | null>(null);
   const channel = channels.find((c) => c.id === channelId);
 
@@ -56,28 +57,36 @@ export function Workspace({
 
   return (
     <div className="flex h-full overflow-hidden">
-      <Sidebar user={user} channels={channels} channelId={channelId} onCreateChannel={createChannel}>
-        <Section title="Apps">
-          {apps.length === 0 ? <p className="px-2 py-1 text-xs text-faint">Nothing built yet</p> : null}
-          {apps.slice(0, 12).map((a) => (
-            <Link
-              key={a.id}
-              href={`/c/${a.channelId}?app=${a.id}`}
-              onClick={(e) => {
-                if (a.channelId !== channelId) return;
-                e.preventDefault();
-                setOpenRequest({ appId: a.id, nonce: Date.now() });
-              }}
-              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted transition hover:bg-hover/60 hover:text-fg"
-            >
-              <AppWindow className="size-3.5 shrink-0 text-faint" />
-              <span className="min-w-0 flex-1 truncate">{a.title}</span>
-              {a.publishedVersion ? <span className="size-1.5 shrink-0 rounded-full bg-accent" title="Live" /> : null}
-            </Link>
-          ))}
-        </Section>
-        <DataSection sources={sources} serviceAccountEmail={serviceAccountEmail} onChange={setSources} />
-      </Sidebar>
+      {navOpen ? <div className="fixed inset-0 z-40 bg-black/60 md:hidden" onClick={() => setNavOpen(false)} /> : null}
+      <div
+        className={navOpen ? "fixed inset-y-0 left-0 z-50 flex md:static md:z-auto" : "hidden md:flex"}
+        onClickCapture={(e) => {
+          if ((e.target as HTMLElement).closest("a")) setNavOpen(false);
+        }}
+      >
+        <Sidebar user={user} channels={channels} channelId={channelId} onCreateChannel={createChannel}>
+          <Section title="Apps">
+            {apps.length === 0 ? <p className="px-2 py-1 text-xs text-faint">Nothing built yet</p> : null}
+            {apps.slice(0, 12).map((a) => (
+              <Link
+                key={a.id}
+                href={`/c/${a.channelId}?app=${a.id}`}
+                onClick={(e) => {
+                  if (a.channelId !== channelId) return;
+                  e.preventDefault();
+                  setOpenRequest({ appId: a.id, nonce: Date.now() });
+                }}
+                className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted transition hover:bg-hover/60 hover:text-fg"
+              >
+                <AppWindow className="size-3.5 shrink-0 text-faint" />
+                <span className="min-w-0 flex-1 truncate">{a.title}</span>
+                {a.publishedVersion ? <span className="size-1.5 shrink-0 rounded-full bg-accent" title="Live" /> : null}
+              </Link>
+            ))}
+          </Section>
+          <DataSection sources={sources} serviceAccountEmail={serviceAccountEmail} onChange={setSources} />
+        </Sidebar>
+      </div>
       {channel ? (
         <ChannelScope
           key={channel.id}
@@ -87,6 +96,7 @@ export function Workspace({
           appsUrl={appsUrl}
           initialOpen={initialOpen}
           openRequest={openRequest}
+          onOpenNav={() => setNavOpen(true)}
           onAppsStale={refreshApps}
           renderPanelActions={(app, version) => (
             <PublishControls app={app} version={version} appsUrl={appsUrl} onChanged={refreshApps} />

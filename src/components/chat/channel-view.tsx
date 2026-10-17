@@ -36,6 +36,8 @@ export function ChannelView({
   useLayoutEffect(() => {
     const el = scroller.current;
     if (!el) return;
+    // Your own just-sent message always scrolls into view.
+    if (messages.at(-1)?.pending) atBottom.current = true;
     if (atBottom.current) {
       el.scrollTop = el.scrollHeight;
     } else if (messages.length) {

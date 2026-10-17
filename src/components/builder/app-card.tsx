@@ -33,7 +33,7 @@ export function AppCard({
         <span className="block truncate font-medium text-fg">{app?.title ?? "Loading app..."}</span>
         <span className="mt-0.5 flex items-center gap-2 text-xs text-muted">
           <span className="font-mono">v{version}</span>
-          {app && app.latestVersion > version ? <span className="text-faint">· newer version available</span> : null}
+          {app && app.latestVersion > version ? <span className="hidden text-faint xl:inline">· newer version available</span> : null}
           {live ? (
             <span className="flex items-center gap-1 text-accent">
               <span className="size-1.5 rounded-full bg-accent" /> Live
