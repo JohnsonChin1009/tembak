@@ -18,6 +18,7 @@ export class MemoryStore implements Store {
   private apps = new Map<string, App>();
   private versions = new Map<string, AppVersion[]>();
   private sources = new Map<string, Source>();
+  private kv = new Map<string, unknown>();
   private bus = new EventEmitter().setMaxListeners(0);
 
   async upsertUser(user: User) {
@@ -100,6 +101,14 @@ export class MemoryStore implements Store {
         return meta as AppVersionMeta;
       })
       .sort((a, b) => a.n - b.n);
+  }
+
+  async getKv(appId: string, key: string) {
+    const v = this.kv.get(`${appId}/${key}`);
+    return v === undefined ? null : structuredClone(v);
+  }
+  async setKv(appId: string, key: string, value: unknown) {
+    this.kv.set(`${appId}/${key}`, structuredClone(value));
   }
 
   async listSources() {

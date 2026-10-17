@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AppWindow } from "lucide-react";
+import { PublishControls } from "@/components/builder/publish-controls";
 import type { App, Channel, User } from "@/lib/types";
 import { ChannelScope, type OpenApp } from "./channel-scope";
 import { Section, Sidebar } from "./sidebar";
@@ -80,6 +81,9 @@ export function Workspace({
           initialOpen={initialOpen}
           openRequest={openRequest}
           onAppsStale={refreshApps}
+          renderPanelActions={(app, version) => (
+            <PublishControls app={app} version={version} appsUrl={appsUrl} onChanged={refreshApps} />
+          )}
         />
       ) : null}
     </div>
