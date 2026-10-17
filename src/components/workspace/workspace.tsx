@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Hash } from "lucide-react";
+import { ChannelView } from "@/components/chat/channel-view";
 import type { App, Channel, User } from "@/lib/types";
 import { Sidebar } from "./sidebar";
 
@@ -43,7 +44,7 @@ export function Workspace({
           <h1 className="font-semibold">{channel?.name}</h1>
           {channel?.topic ? <p className="ml-2 truncate text-sm text-faint">{channel.topic}</p> : null}
         </header>
-        <div className="grid flex-1 place-items-center text-sm text-faint">Chat arrives in module 02.</div>
+        {channel ? <ChannelView key={channel.id} channel={channel} user={user} /> : null}
       </main>
     </div>
   );
