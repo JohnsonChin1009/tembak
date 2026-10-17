@@ -1,0 +1,89 @@
+// Shared domain types. Safe to import from client and server.
+
+export type User = {
+  uid: string;
+  name: string;
+  email?: string;
+  photoUrl?: string;
+};
+
+export type Channel = {
+  id: string;
+  name: string;
+  topic?: string;
+  createdAt: number;
+  createdBy: string;
+};
+
+export type MessageAuthor =
+  | { kind: "user"; uid: string; name: string; photoUrl?: string }
+  | { kind: "agent" };
+
+export type AgentStatus = "thinking" | "building" | "done" | "error";
+
+export type AppRef = { appId: string; version: number };
+
+export type Message = {
+  id: string;
+  channelId: string;
+  createdAt: number;
+  author: MessageAuthor;
+  text: string;
+  mentionsAgent: boolean;
+  appRef?: AppRef;
+  status?: AgentStatus;
+  /** Short progress line shown while the agent works. */
+  statusLine?: string;
+  error?: string;
+  /** Id of the user message that triggered this agent message. */
+  replyTo?: string;
+};
+
+export type App = {
+  id: string;
+  slug: string;
+  title: string;
+  channelId: string;
+  createdBy: string;
+  createdAt: number;
+  updatedAt: number;
+  latestVersion: number;
+  publishedVersion?: number;
+  sourceKeys: string[];
+};
+
+export type AppVersion = {
+  appId: string;
+  n: number;
+  html: string;
+  summary: string;
+  prompt: string;
+  createdAt: number;
+  createdBy: string;
+  model: string;
+};
+
+export type AppVersionMeta = Omit<AppVersion, "html">;
+
+export type Row = Record<string, string | number | boolean | null>;
+
+export type SourceKind = "sheet" | "csv" | "json" | "sample";
+
+export type SourceConfig =
+  | { kind: "sheet"; url: string; range?: string }
+  | { kind: "csv"; text: string }
+  | { kind: "json"; url: string; headerName?: string; headerValue?: string }
+  | { kind: "sample"; dataset: string };
+
+export type Source = {
+  id: string;
+  key: string;
+  name: string;
+  kind: SourceKind;
+  config: SourceConfig;
+  columns: string[];
+  sample: Row[];
+  rowCount?: number;
+  updatedAt: number;
+  createdBy: string;
+};
