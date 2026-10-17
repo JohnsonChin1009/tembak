@@ -1,0 +1,16 @@
+node_modules/
+.next/
+out/
+build/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+.firebase/
+service-account*.json
+*-key.json
+.data/
