@@ -120,16 +120,26 @@ function analyze(data) {
 
 function sum(data, c) { return data.reduce((a, r) => a + (typeof r[c] === "number" ? r[c] : 0), 0); }
 
+function pick(metrics, patterns) {
+  for (const p of patterns) { const hit = metrics.find((c) => p.test(c)); if (hit) return hit; }
+  return null;
+}
+const CONV = [/signup|sign_up/i, /conversion/i, /lead/i, /order/i, /won|deal/i, /revenue|sales|amount/i];
+
 function renderKpis(meta) {
   const el = document.getElementById("kpis");
-  const tiles = [];
   const m = meta.metrics;
-  const spend = m.find((c) => /spend|cost/i.test(c));
-  const conv = m.find((c) => /signup|sign_up|conversion|lead|order|won/i.test(c));
-  for (const c of m.slice(0, spend && conv ? 3 : 4)) tiles.push([label(c), fmt(c, sum(filtered, c))]);
-  if (spend && conv) {
+  const spend = pick(m, [/spend|cost/i]);
+  const conv = pick(m, CONV);
+  const tiles = [];
+  if (spend && conv && spend !== conv) {
     const s = sum(filtered, spend), v = sum(filtered, conv);
-    tiles.push(["Cost per " + label(conv).replace(/s$/i, "").toLowerCase(), v ? money2.format(s / v) : "—"]);
+    tiles.push([label(spend), fmt(spend, s)], [label(conv), fmt(conv, v)],
+      ["Cost per " + label(conv).replace(/s$/i, "").toLowerCase(), v ? money2.format(s / v) : "—"]);
+    const other = m.find((c) => c !== spend && c !== conv);
+    if (other) tiles.push([label(other), fmt(other, sum(filtered, other))]);
+  } else {
+    for (const c of m.slice(0, 4)) tiles.push([label(c), fmt(c, sum(filtered, c))]);
   }
   if (tiles.length < 4) tiles.unshift(["Records", nf.format(filtered.length)]);
   el.innerHTML = tiles.slice(0, 4).map(([k, v], i) => \`
@@ -144,8 +154,8 @@ function renderCharts(meta) {
   charts = [];
   Chart.defaults.font.family = "Inter, ui-sans-serif, system-ui";
   Chart.defaults.color = "#64748b";
-  const metric = meta.metrics.find((c) => /signup|revenue|amount|sales|clicks/i.test(c)) || meta.metrics[0];
-  const second = meta.metrics.find((c) => /spend|cost/i.test(c)) || metric;
+  const metric = pick(meta.metrics, [...CONV, /click/i]) || meta.metrics[0];
+  const second = pick(meta.metrics, [/spend|cost/i]) || metric;
   if (!metric) return;
 
   if (meta.dateCol) {

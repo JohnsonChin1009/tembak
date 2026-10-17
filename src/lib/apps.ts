@@ -3,6 +3,16 @@ import { appSlug, randomId } from "@/lib/ids";
 import { getStore } from "@/lib/store";
 import type { App, AppVersion } from "@/lib/types";
 
+/** Source keys the generated code reads via tembak.data("..."), so the data proxy allows them. */
+function referencedKeys(html: string): string[] {
+  return [...html.matchAll(/tembak\.data\(\s*["'`]([\w.-]+)["'`]/g)].map((m) => m[1]);
+}
+
+async function allowedKeys(html: string, declared: string[]): Promise<string[]> {
+  const existing = new Set((await (await getStore()).listSources()).map((s) => s.key));
+  return [...new Set([...declared, ...referencedKeys(html).filter((k) => existing.has(k))])];
+}
+
 type VersionInput = {
   html: string;
   summary: string;
@@ -26,7 +36,7 @@ export async function createApp(
     createdAt: now,
     updatedAt: now,
     latestVersion: 1,
-    sourceKeys: input.sourceKeys,
+    sourceKeys: await allowedKeys(input.html, input.sourceKeys),
   };
   const version: AppVersion = {
     appId: app.id,
@@ -61,7 +71,7 @@ export async function addAppVersion(
     model: input.model,
   };
   await store.addVersion(version);
-  const sourceKeys = [...new Set([...app.sourceKeys, ...input.sourceKeys])];
+  const sourceKeys = await allowedKeys(input.html, [...app.sourceKeys, ...input.sourceKeys]);
   await store.updateApp(app.id, { latestVersion: n, updatedAt: now, sourceKeys });
   return { app: { ...app, latestVersion: n, updatedAt: now, sourceKeys }, version };
 }

@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { Workspace } from "@/components/workspace/workspace";
 import { getSessionUser } from "@/lib/auth/session";
 import { config } from "@/lib/config";
+import { redact } from "@/lib/data/sources";
 import { getStore } from "@/lib/store";
 
 export default async function ChannelPage({ params, searchParams }: PageProps<"/c/[channelId]">) {
@@ -10,7 +11,11 @@ export default async function ChannelPage({ params, searchParams }: PageProps<"/
   if (!user) redirect(`/login?next=/c/${channelId}`);
 
   const store = await getStore();
-  const [channels, apps] = await Promise.all([store.listChannels(), store.listApps()]);
+  const [channels, apps, sources] = await Promise.all([
+    store.listChannels(),
+    store.listApps(),
+    store.listSources(),
+  ]);
   if (!channels.some((c) => c.id === channelId)) notFound();
 
   const appId = typeof query.app === "string" ? query.app : null;
@@ -21,6 +26,8 @@ export default async function ChannelPage({ params, searchParams }: PageProps<"/
       user={user}
       channels={channels}
       apps={apps}
+      sources={sources.map(redact)}
+      serviceAccountEmail={config().serviceAccountEmail}
       channelId={channelId}
       appsUrl={config().appsUrl}
       agentMode={config().agentMode}
