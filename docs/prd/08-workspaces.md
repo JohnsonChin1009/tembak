@@ -17,6 +17,8 @@ room for them.
 - As an owner I can reset the invite link so old links stop working.
 - As a member of several workspaces I can switch between them from the sidebar.
 - As anyone signed in I can open the **Demo** workspace and try Tembak without creating anything.
+  Creating my own workspace is the default path; the demo is the secondary option.
+- As a Tembak maintainer I own the Demo workspace and can reset it to its curated seed.
 - As a member I only ever see channels, messages, apps, and data sources from workspaces I belong to.
 - As a visitor with a published app link I can still open the app without signing in (unchanged).
 
@@ -96,7 +98,7 @@ map per workspace.
 | Path | Behavior |
 |---|---|
 | `/` | Signed out: landing page. Signed in: redirect to `lastWorkspaceId`'s first channel, or `/new` if the user has no workspaces |
-| `/new` | Create a workspace (name field), or "Explore the demo workspace" |
+| `/new` | Primary: create a workspace (name field, focused). Secondary: "Explore the demo workspace" link |
 | `/w/[slug]` | Redirect to the workspace's first channel |
 | `/w/[slug]/c/[channelId]` | The workspace UI (today's `/c/[channelId]`). 404 if not a member |
 | `/join/[token]` | Signed out: `/login?next=/join/[token]`. Signed in: add as member (idempotent), redirect to the workspace |
@@ -148,6 +150,11 @@ Public routes are unchanged.
 - Seeded on first boot with slug `demo`, `open: true`, and today's seed data
   (`#general`, `#marketing` conversation, `#ops`, sample sources).
 - Any signed-in user who opens `/w/demo` is added as a member automatically.
+- Maintainers are listed in `DEMO_OWNER_EMAILS` (comma list, env). They are owners of the demo;
+  everyone else joins as a member. The demo has no invite link (it's open).
+- Owners see "Reset demo" in the workspace menu: it deletes the demo's channels, messages, sources,
+  and apps, then re-seeds the curated content. This keeps the shared demo clean after judges
+  and visitors play in it.
 - Existing production data: apps without `workspaceId` are treated as `demo`.
   Old top-level `channels` and `sources` docs are ignored; the demo is re-seeded under
   `workspaces/demo`. No migration script needed for the hackathon.
