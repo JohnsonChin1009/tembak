@@ -149,7 +149,11 @@ async function mockAnswer(state: RunState, key: string | undefined): Promise<str
   if (!source) return "I couldn't find data for that. Connect a source and ask again.";
   const numeric = source.columns.filter((c) => source.sample.every((r) => r[c] == null || typeof r[c] === "number"));
   const category = source.columns.find((c) => !numeric.includes(c) && !/date|week|day|month|time|_at$/i.test(c));
-  const metric = numeric.find((c) => /signup|revenue|amount|spend|count|tickets|value/i.test(c)) ?? numeric[0];
+  const asked = state.ctx.request.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const metric =
+    numeric.find((c) => asked.includes(c.replace(/_/g, "").replace(/s$/, ""))) ??
+    numeric.find((c) => /signup|revenue|amount|spend|count|tickets|value/i.test(c)) ??
+    numeric[0];
   if (!category || !metric) return `**${source.name}** has ${source.rowCount ?? "some"} rows. Connect Gemini to ask questions about it.`;
   const res = await runTool(
     "query_source",

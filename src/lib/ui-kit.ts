@@ -44,7 +44,7 @@ export const UI_KIT_CSS = `
 .tk-seg{display:inline-flex;padding:3px;border-radius:10px;background:color-mix(in srgb,var(--tk-text) 6%,transparent)}
 .tk-seg button{border:0;background:transparent;color:var(--tk-muted);font:inherit;font-size:13px;font-weight:550;padding:5px 12px;border-radius:8px;cursor:pointer}
 .tk-seg button[aria-pressed=true]{background:var(--tk-card);color:var(--tk-text);box-shadow:0 1px 2px rgba(0,0,0,.08)}
-.tk-kpis{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr))}
+.tk-kpis{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr))}
 .tk-kpi{background:var(--tk-card);border:1px solid var(--tk-border);border-radius:var(--tk-radius);padding:16px}
 .tk-kpi-label{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--tk-muted)}
 .tk-kpi-value{margin-top:6px;font-size:26px;font-weight:650;letter-spacing:-.02em;font-variant-numeric:tabular-nums}

@@ -112,6 +112,7 @@ export function AgentSettingsDialog({ onClose }: { onClose: () => void }) {
               value={rules}
               onChange={(e) => setRules(e.target.value.slice(0, MAX_RULES))}
               readOnly={!editable}
+              aria-label="Team rules"
               rows={4}
               placeholder={"Use our brand orange #ff5a1f as the accent.\nAlways add an Export CSV button.\nKeep the tone casual."}
               className={clsx(input, "mt-3 py-2.5 leading-relaxed")}
