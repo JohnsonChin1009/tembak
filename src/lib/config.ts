@@ -38,6 +38,10 @@ const schema = z.object({
   NOTION_OAUTH_CLIENT_SECRET: z.string().optional(),
   LINEAR_OAUTH_CLIENT_ID: z.string().optional(),
   LINEAR_OAUTH_CLIENT_SECRET: z.string().optional(),
+  // Shared secret Cloud Scheduler sends to /api/cron/tick. Unset in dev = "dev"; unset in prod = tick disabled.
+  CRON_SECRET: z.string().optional(),
+  // Time zone for workflows when the request doesn't name one.
+  WORKFLOW_DEFAULT_TZ: z.string().default("Asia/Kuala_Lumpur"),
 });
 
 // setup-gcp.sh stores "unset" for secrets that weren't provided.
@@ -92,6 +96,8 @@ function load() {
         }
       : null,
     serviceAccountEmail: env.SERVICE_ACCOUNT_EMAIL,
+    cronSecret: present(env.CRON_SECRET) ?? (env.NODE_ENV === "production" ? undefined : "dev"),
+    workflowDefaultTz: env.WORKFLOW_DEFAULT_TZ,
     oauth: {
       notion: oauthApp(env.NOTION_OAUTH_CLIENT_ID, env.NOTION_OAUTH_CLIENT_SECRET),
       linear: oauthApp(env.LINEAR_OAUTH_CLIENT_ID, env.LINEAR_OAUTH_CLIENT_SECRET),

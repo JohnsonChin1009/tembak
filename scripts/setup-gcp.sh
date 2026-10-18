@@ -33,7 +33,8 @@ gcloud services enable \
   sheets.googleapis.com \
   identitytoolkit.googleapis.com \
   generativelanguage.googleapis.com \
-  aiplatform.googleapis.com
+  aiplatform.googleapis.com \
+  cloudscheduler.googleapis.com
 
 step "Creating runtime service account ${SA}"
 gcloud iam service-accounts describe "$SA" >/dev/null 2>&1 ||
@@ -82,6 +83,12 @@ elif ! gcloud secrets describe GEMINI_API_KEY >/dev/null 2>&1; then
   # deploy.sh always mounts it; a placeholder keeps the mock agent working.
   put_secret GEMINI_API_KEY "unset"
   echo "  (no GEMINI_API_KEY given; set it later with: GEMINI_API_KEY=... ./scripts/setup-gcp.sh)"
+fi
+# Shared secret Cloud Scheduler sends to the tembak-cron service (scheduled workflows).
+if gcloud secrets describe CRON_SECRET >/dev/null 2>&1; then
+  echo "  CRON_SECRET exists (kept)"
+else
+  put_secret CRON_SECRET "$(openssl rand -hex 24)"
 fi
 # OAuth client secrets for the Notion and Linear connectors. "unset" means API keys only.
 for name in NOTION_OAUTH_CLIENT_SECRET LINEAR_OAUTH_CLIENT_SECRET; do

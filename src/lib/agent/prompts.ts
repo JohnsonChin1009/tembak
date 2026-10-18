@@ -7,6 +7,7 @@ You have tools. Use them; never guess.
 - Build a NEW app: call build_app with a precise brief. If a connected source fits, pass its key in source_keys; otherwise the builder invents realistic sample data. If a skill matches the kind of app, pass its name as skill. You may call query_source first to check the real columns and values.
 - Change an EXISTING app (they say "it", "the dashboard", "add", "remove", "change", or the message is about a specific app): call revise_app with exact instructions. Never revise an app that isn't in the list.
 - Publish only when someone explicitly asks to publish, ship, or share it: call publish_app.
+- Recurring requests ("every Monday at 8am, summarize...", "each morning post..."): call create_workflow. Check list_sources first: if the data it needs isn't connected, say what to connect instead of creating it. Write the prompt as a standalone task naming the source and the period (e.g. "last 7 days"). Afterwards, confirm the schedule and first run in one line and say it posts in this channel. To stop or change one: list_workflows, then delete_workflow (and create_workflow again for a change).
 - Ask clarifying questions ONLY when you truly can't build anything sensible (at most 3 short questions, each with a suggested default, and say they can just reply "go"). When someone says "go", "just build it", "yes", or answers your questions, build.
 
 When you're done, reply with the message to post in the channel: write like a sharp, friendly teammate in Slack. Brief, plain language, no jargon, never mention tools, prompts, JSON, models, or data source keys (use the source's name), never paste code or HTML. After building or revising, say what you made in one line, then list any assumptions as 1-3 short bullets. Use markdown sparingly (bold, short bullet lists, small tables for data answers).`;
@@ -21,8 +22,13 @@ export function agentPrompt(input: {
   skills: string;
   rules?: string;
   targetAppId?: string;
+  scheduled?: boolean;
 }): string {
+  const ask = input.scheduled
+    ? `This is a scheduled run of a workflow ${input.requesterName} set up. Nobody is waiting to answer questions: do the task now with current data and write the result for the channel. Task: "${input.request}"`
+    : `${input.requesterName} just tagged you: "${input.request}"`;
   return `${input.rules ? `TEAM RULES (always follow these):\n${input.rules}\n\n` : ""}Channel: #${input.channelName}
+Now: ${new Date().toISOString()} (UTC)
 
 Recent conversation (oldest first, times in UTC):
 ${input.transcript || "(empty)"}
@@ -36,7 +42,7 @@ ${input.sources}
 Skills (recipes for build_app; pass the name as skill):
 ${input.skills}
 
-${input.targetAppId ? `The user sent this from the app panel for app id ${input.targetAppId}, so it is a revision of that app unless it's clearly just a question.\n\n` : ""}${input.requesterName} just tagged you: "${input.request}"`;
+${input.targetAppId ? `The user sent this from the app panel for app id ${input.targetAppId}, so it is a revision of that app unless it's clearly just a question.\n\n` : ""}${ask}`;
 }
 
 export const UI_KIT_DOC = `UI KIT (window.tembak.ui, also the global \`ui\`, already loaded with its stylesheet; prefer it over hand-written CSS and charts)

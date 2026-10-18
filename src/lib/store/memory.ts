@@ -15,6 +15,7 @@ import type {
   Source,
   UnreadMentions,
   User,
+  Workflow,
   Workspace,
 } from "@/lib/types";
 import type { ActionRecord } from "@/lib/types";
@@ -43,6 +44,7 @@ export class MemoryStore implements Store {
   private connections = new Map<string, Connection>();
   private skills = new Map<string, Skill>();
   private actions = new Map<string, ActionRecord>();
+  private workflows = new Map<string, Workflow>();
   // Keyed by "<workspaceId>/<uid>".
   private mentions = new Map<string, UnreadMentions>();
   private bus = new EventEmitter().setMaxListeners(0);
@@ -124,6 +126,7 @@ export class MemoryStore implements Store {
       this.versions.delete(id);
       for (const key of [...this.kv.keys()]) if (key.startsWith(`${id}/`)) this.kv.delete(key);
     }
+    for (const [id, w] of this.workflows) if (w.workspaceId === workspaceId) this.workflows.delete(id);
   }
 
   async deleteWorkspace(workspaceId: string) {
@@ -333,5 +336,36 @@ export class MemoryStore implements Store {
       .filter((a) => a.workspaceId === workspaceId)
       .sort((a, b) => b.at - a.at)
       .slice(0, limit);
+  }
+
+  async listWorkflows(workspaceId: string) {
+    return [...this.workflows.values()]
+      .filter((w) => w.workspaceId === workspaceId)
+      .sort((a, b) => a.createdAt - b.createdAt);
+  }
+  async getWorkflow(id: string) {
+    return this.workflows.get(id) ?? null;
+  }
+  async upsertWorkflow(workflow: Workflow) {
+    this.workflows.set(workflow.id, workflow);
+  }
+  async updateWorkflow(id: string, patch: Partial<Workflow>) {
+    const w = this.workflows.get(id);
+    if (w) this.workflows.set(id, { ...w, ...patch });
+  }
+  async deleteWorkflow(id: string) {
+    this.workflows.delete(id);
+  }
+  async listDueWorkflows(now: number, limit: number) {
+    return [...this.workflows.values()]
+      .filter((w) => w.nextRunAt <= now)
+      .sort((a, b) => a.nextRunAt - b.nextRunAt)
+      .slice(0, limit);
+  }
+  async claimWorkflow(id: string, expected: number, next: number) {
+    const w = this.workflows.get(id);
+    if (!w || w.nextRunAt !== expected) return false;
+    this.workflows.set(id, { ...w, nextRunAt: next });
+    return true;
   }
 }

@@ -8,7 +8,8 @@ const APPS_HOST = new URL(APPS_URL).host;
 const SPLIT_HOSTS = APP_HOST !== APPS_HOST;
 
 // /api/runtime/* is called from app iframes without cookies; it checks a bearer app token itself.
-const PUBLIC_PREFIXES = ["/a/", "/api/public/", "/api/runtime/", "/api/session", "/login", "/_next/", "/favicon"];
+// /api/cron/* is called by Cloud Scheduler and checks its own shared secret.
+const PUBLIC_PREFIXES = ["/a/", "/api/public/", "/api/runtime/", "/api/cron/", "/api/session", "/login", "/_next/", "/favicon"];
 
 function hostOf(req: NextRequest) {
   return req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "";

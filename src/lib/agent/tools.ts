@@ -7,6 +7,7 @@ import { sourceRows } from "@/lib/data/fetch";
 import { SAMPLE_DATASETS } from "@/lib/data/samples";
 import { getStore } from "@/lib/store";
 import type { App, AppRef, Message, Row, Source } from "@/lib/types";
+import { createWorkflow, describeSchedule, formatRunTime, normalizeTz, scheduleFrom } from "@/lib/workflows";
 import { currentVersion, describeSources, type AgentContext } from "./context";
 import { generateText } from "./gemini";
 import { extractHtml, InvalidHtmlError } from "./html";
@@ -29,6 +30,8 @@ export type RunState = {
   /** The latest app built or revised in this run; shown as the app card. */
   appRef?: AppRef;
   summaries: string[];
+  /** A workflow's scheduled run: read-only tools, nobody waiting to answer questions. */
+  scheduled?: boolean;
 };
 
 type Args = Record<string, unknown>;
@@ -120,10 +123,51 @@ export const TOOL_DECLARATIONS: FunctionDeclaration[] = [
     description: "Publish an app's latest version to its live link (members of this workspace only). Only when someone explicitly asks.",
     parametersJsonSchema: { type: "object", properties: { app_id: { type: "string" } }, required: ["app_id"] },
   },
+  {
+    name: "create_workflow",
+    description:
+      "Save a scheduled workflow: from now on, Tembak runs `prompt` on the schedule and posts the result in this channel. Use it when someone asks for something recurring (every Monday, daily, each morning, weekly).",
+    parametersJsonSchema: {
+      type: "object",
+      properties: {
+        prompt: {
+          type: "string",
+          description:
+            "The task for each run, written as a standalone request with the data source name and any period, e.g. \"Summarize Linear tickets updated in the last 7 days, grouped by status and assignee\"",
+        },
+        every: { type: "string", enum: ["hour", "day", "weekday", "week"] },
+        day: { type: "string", enum: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"], description: "Only for every=week" },
+        at: { type: "string", description: "24-hour local time, \"HH:MM\" (not for every=hour)" },
+        timezone: {
+          type: "string",
+          description: "IANA zone (\"Asia/Kuala_Lumpur\") or an offset like \"GMT+8\". Omit if they didn't say.",
+        },
+      },
+      required: ["prompt", "every"],
+    },
+  },
+  {
+    name: "list_workflows",
+    description: "List this workspace's scheduled workflows: id, task, schedule, channel, next run, last run.",
+    parametersJsonSchema: { type: "object", properties: {} },
+  },
+  {
+    name: "delete_workflow",
+    description: "Stop and delete a scheduled workflow. Call list_workflows first to find its id.",
+    parametersJsonSchema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
+  },
 ];
+
+/** A scheduled run can read and answer, but not build, publish, or schedule more. */
+const SCHEDULED_TOOLS = new Set(["list_sources", "query_source", "list_apps", "load_skill"]);
+
+export function toolsFor(state: RunState): FunctionDeclaration[] {
+  return state.scheduled ? TOOL_DECLARATIONS.filter((t) => SCHEDULED_TOOLS.has(t.name ?? "")) : TOOL_DECLARATIONS;
+}
 
 /** Runs one tool call. Errors come back as { error } so the model can recover. */
 export async function runTool(name: string, args: Args, state: RunState): Promise<Result> {
+  if (state.scheduled && !SCHEDULED_TOOLS.has(name)) return { error: `${name} isn't available in a scheduled run` };
   try {
     switch (name) {
       case "list_sources":
@@ -144,6 +188,12 @@ export async function runTool(name: string, args: Args, state: RunState): Promis
         return await reviseApp(args, state);
       case "publish_app":
         return await publishApp(args, state);
+      case "create_workflow":
+        return await createWorkflowTool(args, state);
+      case "list_workflows":
+        return await listWorkflowsTool(state);
+      case "delete_workflow":
+        return await deleteWorkflowTool(args, state);
       default:
         return { error: `Unknown tool ${name}` };
     }
@@ -331,6 +381,63 @@ async function publishApp(args: Args, state: RunState): Promise<Result> {
   app.publishedVersion = app.latestVersion;
   state.appRef = { appId: app.id, version: app.latestVersion };
   return { url: `${config().appsUrl}/a/${app.slug}`, version: app.latestVersion };
+}
+
+// --- workflows -----------------------------------------------------------------------
+
+async function createWorkflowTool(args: Args, state: RunState): Promise<Result> {
+  const { trigger } = state.ctx;
+  if (trigger.author.kind !== "user") return { error: "Only a person can set up a workflow." };
+  const prompt = str(args.prompt);
+  if (!prompt) return { error: "prompt is required" };
+  const tz = normalizeTz(str(args.timezone));
+  if (!tz) return { error: `Unknown time zone "${str(args.timezone)}". Use an IANA name like "Asia/Kuala_Lumpur".` };
+  const schedule = scheduleFrom({ every: str(args.every), day: str(args.day), at: str(args.at) || undefined });
+  await state.update({ statusLine: "Saving the workflow..." });
+  const workflow = await createWorkflow({
+    workspaceId: trigger.workspaceId,
+    channelId: trigger.channelId,
+    prompt,
+    schedule,
+    tz,
+    createdBy: trigger.author.uid,
+    createdByName: trigger.author.name,
+  });
+  return {
+    id: workflow.id,
+    task: workflow.prompt,
+    schedule: describeSchedule(schedule, tz),
+    next_run: formatRunTime(workflow.nextRunAt, tz),
+    note: "Posts in this channel. To cancel, someone can ask you to stop it.",
+  };
+}
+
+async function listWorkflowsTool(state: RunState): Promise<Result> {
+  const store = await getStore();
+  const { workspaceId, channelId } = state.ctx.trigger;
+  const [workflows, channels] = await Promise.all([store.listWorkflows(workspaceId), store.listChannels(workspaceId)]);
+  const names = new Map(channels.map((c) => [c.id, c.name]));
+  return {
+    workflows: workflows.map((w) => ({
+      id: w.id,
+      task: w.prompt,
+      schedule: describeSchedule(w.schedule, w.tz),
+      channel: w.channelId === channelId ? "this channel" : `#${names.get(w.channelId) ?? "unknown"}`,
+      created_by: w.createdByName,
+      next_run: formatRunTime(w.nextRunAt, w.tz),
+      last_run: w.lastRun ? `${formatRunTime(w.lastRun.at, w.tz)} (${w.lastRun.status})` : null,
+    })),
+  };
+}
+
+async function deleteWorkflowTool(args: Args, state: RunState): Promise<Result> {
+  const store = await getStore();
+  const workflow = await store.getWorkflow(str(args.id));
+  if (!workflow || workflow.workspaceId !== state.ctx.trigger.workspaceId) {
+    return { error: "No workflow with that id. Call list_workflows." };
+  }
+  await store.deleteWorkflow(workflow.id);
+  return { deleted: workflow.id, task: workflow.prompt };
 }
 
 type ProduceInput = {

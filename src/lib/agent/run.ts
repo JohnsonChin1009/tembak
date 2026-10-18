@@ -5,23 +5,29 @@ import { sourcesFromMessage } from "@/lib/data/sources";
 import { randomId } from "@/lib/ids";
 import { getStore } from "@/lib/store";
 import type { Message, Row } from "@/lib/types";
+import { scheduleFromText } from "@/lib/workflows";
 import { buildContext, describeApps, describeSourcesBrief } from "./context";
 import { generateWithTools } from "./gemini";
-import { mockTriage } from "./mock";
+import { mockTriage, pickSource } from "./mock";
 import { AGENT_SYSTEM, agentPrompt } from "./prompts";
 import { skillIndex } from "./skills";
-import { runTool, TOOL_DECLARATIONS, type RunState, type Update } from "./tools";
+import { runTool, toolsFor, type RunState, type Update } from "./tools";
 
 const RUN_TIMEOUT_MS = 240_000;
 const STEP_TIMEOUT_MS = 45_000;
 const MAX_STEPS = 6;
+
+export type RunOptions = {
+  /** A workflow's scheduled run (src/lib/workflows.ts): read-only tools, no questions back. */
+  scheduled?: boolean;
+};
 
 /**
  * Handles one @tembak mention end to end: posts a "thinking" message, runs the
  * agent loop, and fills the message in. Never throws. This is the agent's only
  * entry point, so it can move to its own service later without a rewrite.
  */
-export async function startAgentRun(trigger: Message): Promise<void> {
+export async function startAgentRun(trigger: Message, options: RunOptions = {}): Promise<{ messageId: string; ok: boolean }> {
   const store = await getStore();
   const reply: Message = {
     id: randomId(),
@@ -46,7 +52,8 @@ export async function startAgentRun(trigger: Message): Promise<void> {
     timer = setTimeout(() => reject(new Error("This took too long, so I stopped. Try again?")), RUN_TIMEOUT_MS);
   });
   try {
-    await Promise.race([run(trigger, update), timeout]);
+    await Promise.race([run(trigger, update, options), timeout]);
+    return { messageId: reply.id, ok: true };
   } catch (err) {
     console.error("[agent] run failed:", err instanceof Error ? err.message : err);
     await update({
@@ -54,12 +61,13 @@ export async function startAgentRun(trigger: Message): Promise<void> {
       statusLine: "",
       error: err instanceof Error ? err.message : "Something went wrong.",
     });
+    return { messageId: reply.id, ok: false };
   } finally {
     clearTimeout(timer);
   }
 }
 
-async function run(trigger: Message, update: (patch: Update) => Promise<void>) {
+async function run(trigger: Message, update: (patch: Update) => Promise<void>, options: RunOptions) {
   const createdBy = trigger.author.kind === "user" ? trigger.author.uid : "agent";
   const linked = await sourcesFromMessage(trigger.workspaceId, trigger.text, createdBy);
   if (linked.created.length || linked.failed.length) {
@@ -69,7 +77,7 @@ async function run(trigger: Message, update: (patch: Update) => Promise<void>) {
   if (linked.failed.length) {
     ctx.request += `\n\n(Note for Tembak: the linked sheet couldn't be read. Tell the user to share it with the Tembak service account or make it viewable by link, and use sample data meanwhile.)`;
   }
-  const state: RunState = { ctx, mode: config().agentMode, createdBy, update, summaries: [] };
+  const state: RunState = { ctx, mode: config().agentMode, createdBy, update, summaries: [], scheduled: options.scheduled };
   const text = state.mode === "gemini" ? await geminiLoop(state) : await mockLoop(state);
   await update({
     status: "done",
@@ -93,6 +101,7 @@ async function geminiLoop(state: RunState): Promise<string> {
     skills: skillIndex(ctx.skills),
     rules: ctx.rules,
     targetAppId: ctx.targetApp?.id,
+    scheduled: state.scheduled,
   });
   const contents: Content[] = [{ role: "user", parts: [{ text: prompt }] }];
 
@@ -102,7 +111,7 @@ async function geminiLoop(state: RunState): Promise<string> {
       model: config().gemini.fastModel,
       system: AGENT_SYSTEM,
       contents,
-      tools: TOOL_DECLARATIONS,
+      tools: toolsFor(state),
       timeoutMs: STEP_TIMEOUT_MS,
       temperature: 0.4,
     });
@@ -129,8 +138,19 @@ async function geminiLoop(state: RunState): Promise<string> {
 
 /** Scripted stand-in for local dev and tests: the same tools, no Gemini. */
 async function mockLoop(state: RunState): Promise<string> {
-  const plan = mockTriage(state.ctx);
   await sleep(700);
+  if (state.scheduled) {
+    const source = pickSource(state.ctx.request, state.ctx.sources);
+    return mockAnswer(state, source?.key);
+  }
+  // Gemini spots recurring requests itself; the mock wants the word.
+  const schedule = /\b(workflow|schedule|remind)/i.test(state.ctx.request) ? scheduleFromText(state.ctx.request) : null;
+  if (schedule) {
+    const res = await runTool("create_workflow", { prompt: state.ctx.request, ...schedule }, state);
+    if (res.error) return `I couldn't set that up: ${String(res.error)}`;
+    return `Done. **${String(res.schedule)}**, I'll do this and post it here:\n\n> ${String(res.task)}\n\nFirst run: ${String(res.next_run)}. Ask me to stop it anytime.`;
+  }
+  const plan = mockTriage(state.ctx);
   if (plan.action === "reply") return plan.message;
   if (plan.action === "answer") return mockAnswer(state, plan.sourceKeys?.[0]);
   if (plan.action === "revise") {

@@ -17,6 +17,7 @@ import type {
   Source,
   UnreadMentions,
   User,
+  Workflow,
   Workspace,
 } from "@/lib/types";
 import type { ActionRecord } from "@/lib/types";
@@ -47,6 +48,13 @@ export class FirestoreStore implements Store {
   }
   private sourcesCol(workspaceId: string) {
     return this.ws(workspaceId).collection("sources");
+  }
+  private get workflowsCol() {
+    return this.db.collection("workflows");
+  }
+  private async deleteWorkspaceWorkflows(workspaceId: string) {
+    const snap = await this.workflowsCol.where("workspaceId", "==", workspaceId).get();
+    await Promise.all(snap.docs.map((d) => d.ref.delete()));
   }
   private versionsCol(appId: string) {
     return this.db.collection("apps").doc(appId).collection("versions");
@@ -135,6 +143,7 @@ export class FirestoreStore implements Store {
     await this.db.recursiveDelete(this.sourcesCol(workspaceId));
     const apps = await this.db.collection("apps").where("workspaceId", "==", workspaceId).get();
     for (const doc of apps.docs) await this.db.recursiveDelete(doc.ref);
+    await this.deleteWorkspaceWorkflows(workspaceId);
   }
 
   async deleteWorkspace(workspaceId: string) {
@@ -147,6 +156,7 @@ export class FirestoreStore implements Store {
     // Apps live at the top level; everything else is under the workspace doc.
     const apps = await this.db.collection("apps").where("workspaceId", "==", workspaceId).get();
     for (const doc of apps.docs) await this.db.recursiveDelete(doc.ref);
+    await this.deleteWorkspaceWorkflows(workspaceId);
     await this.db.recursiveDelete(this.ws(workspaceId));
   }
 
@@ -347,5 +357,36 @@ export class FirestoreStore implements Store {
   async listActionRecords(workspaceId: string, limit = 50) {
     const snap = await this.ws(workspaceId).collection("actions").orderBy("at", "desc").limit(limit).get();
     return snap.docs.map((d) => d.data() as ActionRecord);
+  }
+
+  async listWorkflows(workspaceId: string) {
+    const snap = await this.workflowsCol.where("workspaceId", "==", workspaceId).get();
+    return snap.docs.map((d) => d.data() as Workflow).sort((a, b) => a.createdAt - b.createdAt);
+  }
+  async getWorkflow(id: string) {
+    return as<Workflow>((await this.workflowsCol.doc(id).get()).data());
+  }
+  async upsertWorkflow(workflow: Workflow) {
+    await this.workflowsCol.doc(workflow.id).set(workflow);
+  }
+  async updateWorkflow(id: string, patch: Partial<Workflow>) {
+    await this.workflowsCol.doc(id).set(patch, { merge: true });
+  }
+  async deleteWorkflow(id: string) {
+    await this.workflowsCol.doc(id).delete();
+  }
+  async listDueWorkflows(now: number, limit: number) {
+    // Single-field range on a top-level collection: no composite index needed.
+    const snap = await this.workflowsCol.where("nextRunAt", "<=", now).orderBy("nextRunAt").limit(limit).get();
+    return snap.docs.map((d) => d.data() as Workflow);
+  }
+  async claimWorkflow(id: string, expected: number, next: number) {
+    const ref = this.workflowsCol.doc(id);
+    return this.db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists || (snap.data() as Workflow).nextRunAt !== expected) return false;
+      tx.update(ref, { nextRunAt: next });
+      return true;
+    });
   }
 }
