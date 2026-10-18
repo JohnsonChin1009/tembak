@@ -71,7 +71,7 @@ export function PublishControls({
             <ExternalLink className="size-4" />
           </a>
           {isLiveVersion ? (
-            <button onClick={() => call("DELETE")} disabled={busy} className={iconBtn} aria-label="Unpublish" title="Unpublish">
+            <button onClick={() => call("DELETE")} disabled={busy} className={`${iconBtn} hover:bg-danger/10! hover:text-danger!`} aria-label="Unpublish" title="Unpublish">
               <Undo2 className="size-4" />
             </button>
           ) : null}

@@ -173,6 +173,17 @@ export class FirestoreStore implements Store {
   async updateChannel(workspaceId: string, id: string, patch: Partial<Pick<Channel, "name" | "topic">>) {
     await this.channelsCol(workspaceId).doc(id).set(patch, { merge: true });
   }
+  async deleteChannel(workspaceId: string, id: string) {
+    await this.db.recursiveDelete(this.channelsCol(workspaceId).doc(id));
+    const workflows = await this.workflowsCol.where("workspaceId", "==", workspaceId).get();
+    await Promise.all(workflows.docs.filter((d) => (d.data() as Workflow).channelId === id).map((d) => d.ref.delete()));
+    const mentions = await this.ws(workspaceId).collection("mentions").get();
+    const writer = this.db.bulkWriter();
+    for (const doc of mentions.docs) {
+      if (id in doc.data()) writer.update(doc.ref, { [id]: FieldValue.delete() });
+    }
+    await writer.close();
+  }
 
   async listMessages(workspaceId: string, channelId: string, limit = 100) {
     const snap = await this.messagesCol(workspaceId, channelId)

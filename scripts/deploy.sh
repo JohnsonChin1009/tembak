@@ -136,6 +136,8 @@ else
   echo "note: no CRON_SECRET secret, so scheduled workflows are off. Re-run ./scripts/setup-gcp.sh to enable them."
 fi
 
+./scripts/cleanup-schedulers.sh
+
 cat <<EOF
 
 Live: ${APP_URL:-$URL}

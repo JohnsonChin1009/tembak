@@ -91,6 +91,7 @@ touch the user's session.
 | `pnpm typecheck` | Route types and `tsc` |
 | `./scripts/setup-gcp.sh` | One-time Google Cloud project setup |
 | `./scripts/deploy.sh` | Build with Cloud Build and deploy to Cloud Run |
+| `./scripts/cleanup-schedulers.sh` | Delete dangling Cloud Scheduler tick jobs (`--dry-run` to list). Runs at the end of every deploy |
 
 ## Docs
 

@@ -129,7 +129,7 @@ export function ConnectedCard({
         <p className="text-xs text-faint">{info.connection.authType === "oauth" ? "Signed in with " + info.label : "Using an API key"}</p>
       </div>
       {canConfigure ? (
-        <button type="button" onClick={disconnect} className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-faint hover:bg-hover hover:text-fg">
+        <button type="button" onClick={disconnect} className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-faint hover:bg-danger/10 hover:text-danger">
           <Unplug className="size-3.5" /> Disconnect
         </button>
       ) : null}

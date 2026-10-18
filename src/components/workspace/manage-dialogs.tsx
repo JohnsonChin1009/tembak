@@ -34,14 +34,17 @@ function ErrorLine({ error }: { error: string | null }) {
   );
 }
 
-/** Rename a channel and edit its topic. The URL keeps the original id. */
+/** Rename a channel and edit its topic. The URL keeps the original id. Pass `onDeleted` to offer deleting it. */
 export function ChannelSettingsDialog({
   channel,
   onSaved,
+  onDeleted,
   onClose,
 }: {
   channel: Channel;
   onSaved: (channel: Channel) => void;
+  /** Gets the channel members land in next. */
+  onDeleted?: (fallbackId: string) => void;
   onClose: () => void;
 }) {
   const { api } = useWorkspace();
@@ -49,6 +52,7 @@ export function ChannelSettingsDialog({
   const [topic, setTopic] = useState(channel.topic ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -64,6 +68,52 @@ export function ChannelSettingsDialog({
     if (!res?.ok) return setError(data.error ?? "Couldn't save the channel");
     onSaved(data);
     onClose();
+  }
+
+  async function remove() {
+    setBusy(true);
+    setError(null);
+    const res = await fetch(`${api}/channels/${encodeURIComponent(channel.id)}`, { method: "DELETE" }).catch(() => null);
+    const data = (await res?.json().catch(() => ({}))) as { fallback?: string; error?: string };
+    if (!res?.ok || !data.fallback) {
+      setBusy(false);
+      return setError(data.error ?? "Couldn't delete the channel");
+    }
+    onDeleted?.(data.fallback);
+  }
+
+  if (deleting) {
+    return (
+      <Modal onClose={onClose}>
+        <Header title={`Delete #${channel.name}`} subtitle="This can't be undone." onClose={onClose} />
+        <div className="space-y-4 p-5">
+          <div className="rounded-lg border border-danger/30 bg-danger/5 p-3 text-sm text-muted">
+            Deletes every message and thread in this channel for everyone, and stops its scheduled workflows.
+            <strong className="font-medium text-fg"> Apps built here move to another channel and keep working.</strong>
+          </div>
+          <ErrorLine error={error} />
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setDeleting(false)}
+              className="rounded-md px-3 py-2 text-sm text-muted hover:bg-hover hover:text-fg"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              autoFocus
+              onClick={remove}
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 rounded-md bg-danger px-3 py-2 text-sm font-medium text-bg hover:brightness-110 disabled:opacity-40"
+            >
+              {busy ? <LoaderCircle className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+              Delete channel
+            </button>
+          </div>
+        </div>
+      </Modal>
+    );
   }
 
   return (
@@ -96,6 +146,18 @@ export function ChannelSettingsDialog({
         </label>
         <ErrorLine error={error} />
         <div className="flex justify-end gap-2">
+          {onDeleted ? (
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                setDeleting(true);
+              }}
+              className="mr-auto inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm text-muted hover:bg-danger/10 hover:text-danger"
+            >
+              <Trash2 className="size-3.5" /> Delete channel
+            </button>
+          ) : null}
           <button type="button" onClick={onClose} className="rounded-md px-3 py-2 text-sm text-muted hover:bg-hover hover:text-fg">
             Cancel
           </button>

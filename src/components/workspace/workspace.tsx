@@ -151,6 +151,12 @@ function WorkspaceShell({
           onOpenNav={() => setNavOpen(true)}
           onAppsStale={refreshApps}
           onChannelChanged={(c) => setChannels((cs) => cs.map((x) => (x.id === c.id ? c : x)))}
+          onChannelDeleted={(fallbackId) => {
+            setChannels((cs) => cs.filter((c) => c.id !== channel.id));
+            // Apps built there now live in the fallback channel.
+            void refreshApps();
+            router.replace(`${base}/c/${fallbackId}`);
+          }}
           renderPanelActions={(app, version) => (
             <PublishControls
               app={app}
