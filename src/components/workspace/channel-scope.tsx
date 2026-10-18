@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Hash, Menu, Pencil } from "lucide-react";
-import { AppCard, AppChip } from "@/components/builder/app-card";
+import { AppCard, AppChip, AppLink } from "@/components/builder/app-card";
 import { BuilderPanel } from "@/components/builder/builder-panel";
 import { ChannelView } from "@/components/chat/channel-view";
 import { ThreadPanel } from "@/components/chat/thread-panel";
@@ -123,6 +123,8 @@ export function ChannelScope({
     const app = appsById.get(ref.appId);
     const onOpen = () => setOpen({ appId: ref.appId, version: ref.version });
     if (message.author.kind === "user") return <AppChip app={app} version={ref.version} onOpen={onOpen} />;
+    // App posts open the app as it is now, not the version that posted.
+    if (message.author.kind === "app") return <AppLink app={app} onOpen={() => setOpen({ appId: ref.appId })} />;
     return (
       <AppCard
         app={app}

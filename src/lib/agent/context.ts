@@ -34,6 +34,9 @@ function line(m: Message, apps: Map<string, App>, members: Map<string, string>):
     const built = app ? ` [built app "${app.title}" v${m.appRef!.version}, id ${app.id}]` : "";
     return `[${t}] Tembak (you): ${m.text}${built}`.trim();
   }
+  if (m.author.kind === "app") {
+    return `[${t}] App "${m.author.appTitle}" (posted by ${m.author.name}): ${names(m.text, members)}`;
+  }
   const about = m.appRef ? ` [about app id ${m.appRef.appId}]` : "";
   return `[${t}] ${m.author.name}${about}: ${names(m.text, members)}`;
 }

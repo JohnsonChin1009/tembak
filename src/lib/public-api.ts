@@ -5,7 +5,7 @@ import "server-only";
 // they authenticate with a bearer app token instead (src/lib/runtime-auth.ts).
 export const CORS_HEADERS = {
   "access-control-allow-origin": "*",
-  "access-control-allow-methods": "GET, PUT, OPTIONS",
+  "access-control-allow-methods": "GET, PUT, POST, OPTIONS",
   "access-control-allow-headers": "content-type, authorization",
   "access-control-max-age": "86400",
 };

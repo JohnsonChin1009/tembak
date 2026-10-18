@@ -62,3 +62,16 @@ export function AppChip({ app, version, onOpen }: { app: App | undefined; versio
     </button>
   );
 }
+
+/** Under an app's own post: opens the app (latest version) in the builder panel. */
+export function AppLink({ app, onOpen }: { app: App | undefined; onOpen: () => void }) {
+  return (
+    <button
+      onClick={onOpen}
+      className="inline-flex items-center gap-1 text-xs font-medium text-muted transition hover:text-accent"
+    >
+      <ArrowUpRight className="size-3.5" />
+      Open {app?.title ?? "app"}
+    </button>
+  );
+}

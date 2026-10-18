@@ -88,7 +88,9 @@ export type Channel = {
 
 export type MessageAuthor =
   | { kind: "user"; uid: string; name: string; photoUrl?: string }
-  | { kind: "agent" };
+  | { kind: "agent" }
+  /** Posted by an app through tembak.post, on behalf of the member using it. */
+  | { kind: "app"; appId: string; appTitle: string; uid: string; name: string };
 
 export type AgentStatus = "thinking" | "building" | "done" | "error";
 
