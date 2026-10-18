@@ -33,3 +33,26 @@ export const PATCH = handle(async (req: Request, ctx: RouteContext<"/api/w/[ws]/
   await store.updateChannel(workspace.id, id, patch);
   return json({ ...channel, ...patch });
 });
+
+/**
+ * Deletes a channel and its messages, threads, and workflows. Apps built there
+ * move to the first remaining channel so their links and posts keep working.
+ * Owners and the channel's creator can delete; the last channel stays.
+ */
+export const DELETE = handle(async (_req: Request, ctx: RouteContext<"/api/w/[ws]/channels/[id]">) => {
+  const { ws, id } = await ctx.params;
+  const { user, workspace, role } = await requireMember(ws);
+  const store = await getStore();
+  const channel = await store.getChannel(workspace.id, id);
+  if (!channel) throw new HttpError(404, "Channel not found");
+  const canDelete = role === "owner" || (!workspace.open && channel.createdBy === user.uid);
+  if (!canDelete) throw new HttpError(403, "Only workspace owners and the person who made a channel can delete it");
+
+  const fallback = (await store.listChannels(workspace.id)).find((c) => c.id !== id);
+  if (!fallback) throw new HttpError(400, "A workspace needs at least one channel");
+
+  const apps = (await store.listApps(workspace.id)).filter((a) => a.channelId === id);
+  await Promise.all(apps.map((a) => store.updateApp(a.id, { channelId: fallback.id })));
+  await store.deleteChannel(workspace.id, id);
+  return json({ ok: true, fallback: fallback.id, movedApps: apps.length });
+});

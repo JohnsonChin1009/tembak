@@ -118,6 +118,11 @@ waiting to answer questions.
 - `scripts/deploy.sh`, when `CRON_SECRET` exists: deploys `tembak-cron` from the main service's
   image, grants the runtime service account `run.invoker` on it, and creates or updates the
   `tembak-tick` Cloud Scheduler job.
+- `scripts/cleanup-schedulers.sh` runs at the end of every deploy and deletes any other
+  scheduler job that targets `/api/cron/tick` (all of them, `tembak-tick` included, when
+  `CRON_SECRET` is gone). `--dry-run` lists without deleting.
+- Deleting a channel deletes its workflows; resetting the demo or deleting a workspace deletes
+  all of the workspace's workflows.
 - Local: `curl -X POST -H "x-cron-secret: dev" "localhost:3000/api/cron/tick?now=<ms>"`. The mock
   agent creates a workflow when a message says "workflow", "schedule", or "remind" plus a time
   ("every monday 0800 GMT+8").

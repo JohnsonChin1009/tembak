@@ -39,6 +39,7 @@ export function ChannelScope({
   onOpenNav,
   onAppsStale,
   onChannelChanged,
+  onChannelDeleted,
   renderPanelActions,
 }: {
   channel: Channel;
@@ -51,12 +52,17 @@ export function ChannelScope({
   onOpenNav?: () => void;
   onAppsStale: () => void;
   onChannelChanged?: (channel: Channel) => void;
+  /** Called after this channel is deleted, with the channel to go to next. */
+  onChannelDeleted?: (fallbackId: string) => void;
   renderPanelActions?: (app: App, version: number) => React.ReactNode;
 }) {
   const { base, workspace } = useWorkspace();
   const [editing, setEditing] = useState(false);
   // In the shared demo only maintainers can rename; in team workspaces anyone can.
   const canEdit = !!onChannelChanged && (!workspace.open || workspace.role === "owner");
+  // Matches the API: owners, or whoever made the channel outside the demo.
+  const canDelete =
+    !!onChannelDeleted && (workspace.role === "owner" || (!workspace.open && channel.createdBy === user.uid));
   const onboarding = useOnboarding();
   const [open, setOpenState] = useState<OpenApp | null>(initialOpen);
   const [handledRequest, setHandledRequest] = useState(openRequest?.nonce);
@@ -149,14 +155,19 @@ export function ChannelScope({
               onClick={() => setEditing(true)}
               className="shrink-0 rounded-md p-1.5 text-faint hover:bg-hover hover:text-fg"
               aria-label="Channel settings"
-              title="Rename channel"
+              title="Channel settings"
             >
               <Pencil className="size-3.5" />
             </button>
           ) : null}
         </header>
         {editing && onChannelChanged ? (
-          <ChannelSettingsDialog channel={channel} onSaved={onChannelChanged} onClose={() => setEditing(false)} />
+          <ChannelSettingsDialog
+            channel={channel}
+            onSaved={onChannelChanged}
+            onDeleted={canDelete ? onChannelDeleted : undefined}
+            onClose={() => setEditing(false)}
+          />
         ) : null}
         <ChannelView
           channel={channel}

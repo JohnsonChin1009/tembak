@@ -202,7 +202,7 @@ export function InviteDialog({ onClose }: { onClose: () => void }) {
               <button
                 onClick={rotate}
                 disabled={busy !== null}
-                className="inline-flex items-center gap-1.5 text-xs text-faint hover:text-fg disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 text-xs text-faint hover:text-danger disabled:opacity-50"
               >
                 {busy === "rotate" ? <LoaderCircle className="size-3 animate-spin" /> : <RotateCcw className="size-3" />}
                 Reset link (old links stop working)

@@ -164,6 +164,19 @@ export class MemoryStore implements Store {
     const channel = this.channels.get(k(workspaceId, id));
     if (channel) this.channels.set(k(workspaceId, id), { ...channel, ...patch });
   }
+  async deleteChannel(workspaceId: string, id: string) {
+    const key = k(workspaceId, id);
+    this.channels.delete(key);
+    for (const m of [...this.messages.keys()]) if (m === key || m.startsWith(`${key}#`)) this.messages.delete(m);
+    for (const [wid, w] of this.workflows) if (w.workspaceId === workspaceId && w.channelId === id) this.workflows.delete(wid);
+    for (const [mk, counts] of this.mentions) {
+      if (mk.startsWith(`${workspaceId}/`) && id in counts) {
+        const rest = { ...counts };
+        delete rest[id];
+        this.mentions.set(mk, rest);
+      }
+    }
+  }
 
   async listMessages(workspaceId: string, channelId: string, limit = 100) {
     return structuredClone((this.messages.get(k(workspaceId, channelId)) ?? []).slice(-limit));

@@ -78,7 +78,7 @@ export function ProfileForm({
             <ImageUp className="size-3.5" /> Upload picture
           </button>
           {preview ? (
-            <button type="button" onClick={() => setPhoto("none")} className={ghost}>
+            <button type="button" onClick={() => setPhoto("none")} className={`${ghost} hover:bg-danger/10! hover:text-danger!`}>
               <Trash2 className="size-3.5" /> Remove
             </button>
           ) : null}

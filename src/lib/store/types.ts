@@ -53,6 +53,8 @@ export interface Store {
   getChannel(workspaceId: string, id: string): Promise<Channel | null>;
   createChannel(channel: Channel): Promise<void>;
   updateChannel(workspaceId: string, id: string, patch: Partial<Pick<Channel, "name" | "topic">>): Promise<void>;
+  /** Deletes the channel with its messages, threads, workflows, and unread tags. Apps are left alone. */
+  deleteChannel(workspaceId: string, id: string): Promise<void>;
 
   /** Most recent `limit` messages, oldest first. */
   listMessages(workspaceId: string, channelId: string, limit?: number): Promise<Message[]>;
