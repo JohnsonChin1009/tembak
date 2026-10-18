@@ -49,7 +49,7 @@ async function refresh(conn: Connection, refresher: Refresher): Promise<Connecti
   const run = (async () => {
     const label = PROVIDER_LABEL[conn.provider];
     const tokens = conn.refreshToken ? await refresher(unseal(conn.refreshToken)).catch(() => null) : null;
-    if (!tokens) throw new SourceFetchError(`${label} access expired. Reconnect ${label} from the Data panel.`);
+    if (!tokens) throw new SourceFetchError(`${label} access expired. Reconnect ${label} in Settings → Connectors.`);
     return saveConnection({ ...conn, ...tokens, refreshToken: tokens.refreshToken ?? unseal(conn.refreshToken!) });
   })().finally(() => inflight.delete(key));
   inflight.set(key, run);
@@ -68,21 +68,21 @@ export async function withAccessToken<T>(
 ): Promise<T> {
   const label = PROVIDER_LABEL[provider];
   let conn = await (await getStore()).getConnection(workspaceId, provider);
-  if (!conn) throw new SourceFetchError(`${label} isn't connected to this workspace. Connect it from the Data panel.`);
+  if (!conn) throw new SourceFetchError(`${label} isn't connected to this workspace. Connect it in Settings → Connectors.`);
   if (conn.expiresAt && conn.expiresAt - EXPIRY_SKEW_MS < Date.now()) conn = await refresh(conn, refresher);
   try {
     return await fn(unseal(conn.accessToken), conn);
   } catch (err) {
     if (!(err instanceof ConnectorAuthError)) throw err;
     if (!conn.refreshToken) {
-      throw new SourceFetchError(`${label} rejected the saved key. Reconnect ${label} from the Data panel.`);
+      throw new SourceFetchError(`${label} rejected the saved key. Reconnect ${label} in Settings → Connectors.`);
     }
     conn = await refresh(conn, refresher);
     try {
       return await fn(unseal(conn.accessToken), conn);
     } catch (again) {
       if (again instanceof ConnectorAuthError) {
-        throw new SourceFetchError(`${label} access was revoked. Reconnect ${label} from the Data panel.`);
+        throw new SourceFetchError(`${label} access was revoked. Reconnect ${label} in Settings → Connectors.`);
       }
       throw again;
     }

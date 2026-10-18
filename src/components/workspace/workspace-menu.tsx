@@ -2,23 +2,21 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Bot, Check, ChevronsUpDown, Copy, LoaderCircle, Plus, RotateCcw, Trash2, UserPlus, X } from "lucide-react";
+import { Check, ChevronsUpDown, Copy, LoaderCircle, Plus, RotateCcw, Settings, Trash2, UserPlus, X } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { Modal } from "@/components/data/data-dialog";
 import { useOnboarding } from "@/components/onboarding/onboarding-context";
 import type { Member } from "@/lib/types";
-import { AgentSettingsDialog } from "./agent-settings";
 import { DeleteWorkspaceDialog } from "./manage-dialogs";
 import { useWorkspace } from "./workspace-context";
 
 export type WorkspaceLink = { slug: string; name: string };
 
-/** Sidebar header: current workspace, switcher, invite, and (demo owners) reset. */
+/** Sidebar header: current workspace, switcher, invite, settings, and (demo owners) reset. */
 export function WorkspaceMenu({ workspaces }: { workspaces: WorkspaceLink[] }) {
-  const { workspace } = useWorkspace();
+  const { workspace, base } = useWorkspace();
   const [open, setOpen] = useState(false);
   const [inviting, setInviting] = useState(false);
-  const [settings, setSettings] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -75,15 +73,9 @@ export function WorkspaceMenu({ workspaces }: { workspaces: WorkspaceLink[] }) {
           >
             <UserPlus className="size-3.5" /> {workspace.open ? "Members" : "Invite people"}
           </button>
-          <button
-            className={item}
-            onClick={() => {
-              setOpen(false);
-              setSettings(true);
-            }}
-          >
-            <Bot className="size-3.5" /> Agent settings
-          </button>
+          <Link href={`${base}/settings`} className={item} onClick={() => setOpen(false)}>
+            <Settings className="size-3.5" /> Settings
+          </Link>
           {workspace.role === "owner" && !workspace.open ? (
             <>
               <div className="my-1 h-px bg-line" />
@@ -102,7 +94,6 @@ export function WorkspaceMenu({ workspaces }: { workspaces: WorkspaceLink[] }) {
       ) : null}
 
       {inviting ? <InviteDialog onClose={() => setInviting(false)} /> : null}
-      {settings ? <AgentSettingsDialog onClose={() => setSettings(false)} /> : null}
       {deleting ? <DeleteWorkspaceDialog onClose={() => setDeleting(false)} /> : null}
     </div>
   );
