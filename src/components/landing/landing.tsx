@@ -67,16 +67,16 @@ export function Landing() {
 
       <main>
         <section className="mx-auto max-w-6xl px-4 pt-16 pb-12 sm:px-6 sm:pt-24">
-          <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Disposable software for teams</p>
+          <p className="font-mono text-xs uppercase tracking-[0.2em] text-accent">Multiplayer apps for teams</p>
           <h1 className="mt-4 max-w-3xl text-4xl font-semibold leading-[1.05] tracking-tight sm:text-6xl">
-            Talk it through.
+            One tag. One shot.
             <br />
-            <span className="text-muted">Then ship the app.</span>
+            <span className="text-muted">One flow.</span>
           </h1>
           <p className="mt-6 max-w-xl text-base leading-relaxed text-muted sm:text-lg">
-            Tembak is a team chat that builds software. Tag{" "}
-            <span className="rounded bg-accent-dim px-1.5 py-0.5 font-medium text-accent">@tembak</span> and get a
-            working dashboard, tracker, or tool from your conversation, live on Google Cloud in about a minute.
+            Tembak is a team chat that builds software. Your whole team talks it through, one person tags{" "}
+            <span className="rounded bg-accent-dim px-1.5 py-0.5 font-medium text-accent">@tembak</span>, and a
+            working dashboard, tracker, or tool comes back in one shot, live on Google Cloud.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link

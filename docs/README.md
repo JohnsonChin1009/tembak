@@ -1,6 +1,6 @@
 # Tembak
 
-> *tembak* (Malay): to shoot. Talk it through with your team, then shoot out the software.
+> *tembak* (Malay): to shoot. One tag. One shot. One flow.
 
 Tembak is a chat workspace for small teams. When a conversation has enough
 context, anyone can tag `@tembak` and the agent (Gemini) asks what it needs,
