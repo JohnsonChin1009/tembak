@@ -10,7 +10,7 @@ import type { Member } from "@/lib/types";
 import { DeleteWorkspaceDialog } from "./manage-dialogs";
 import { useWorkspace } from "./workspace-context";
 
-export type WorkspaceLink = { slug: string; name: string };
+export type WorkspaceLink = { slug: string; name: string; demo: boolean };
 
 /** Sidebar header: current workspace, switcher, invite, settings, and (demo owners) reset. */
 export function WorkspaceMenu({ workspaces }: { workspaces: WorkspaceLink[] }) {
@@ -35,6 +35,15 @@ export function WorkspaceMenu({ workspaces }: { workspaces: WorkspaceLink[] }) {
   }, [open]);
 
   const item = "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-muted transition hover:bg-hover hover:text-fg";
+  const heading = "px-2 pt-1 pb-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-faint";
+  const own = workspaces.filter((w) => !w.demo);
+  const demos = workspaces.filter((w) => w.demo);
+  const link = (w: WorkspaceLink) => (
+    <Link key={w.slug} href={`/w/${w.slug}`} className={item} onClick={() => setOpen(false)}>
+      <span className="min-w-0 flex-1 truncate">{w.name}</span>
+      {w.slug === workspace.slug ? <Check className="size-3.5 text-accent" /> : null}
+    </Link>
+  );
 
   return (
     <div ref={ref} className="relative w-full">
@@ -53,16 +62,18 @@ export function WorkspaceMenu({ workspaces }: { workspaces: WorkspaceLink[] }) {
 
       {open ? (
         <div role="menu" className="absolute inset-x-0 top-full z-30 mt-1 rounded-lg border border-line-strong bg-raised p-1 shadow-xl shadow-black/50">
-          <p className="px-2 pt-1 pb-1.5 text-[11px] font-medium uppercase tracking-[0.12em] text-faint">Workspaces</p>
-          {workspaces.map((w) => (
-            <Link key={w.slug} href={`/w/${w.slug}`} className={item} onClick={() => setOpen(false)}>
-              <span className="min-w-0 flex-1 truncate">{w.name}</span>
-              {w.slug === workspace.slug ? <Check className="size-3.5 text-accent" /> : null}
-            </Link>
-          ))}
+          <p className={heading}>Your workspaces</p>
+          {own.map(link)}
           <Link href="/new" className={item} onClick={() => setOpen(false)}>
             <Plus className="size-3.5" /> Create workspace
           </Link>
+          {demos.length ? (
+            <>
+              <div className="my-1 h-px bg-line" />
+              <p className={heading}>Demo</p>
+              {demos.map(link)}
+            </>
+          ) : null}
           <div className="my-1 h-px bg-line" />
           <button
             className={item}
