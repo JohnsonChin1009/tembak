@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowRight, AtSign, MessagesSquare, Rocket } from "lucide-react";
+import { ArrowLeft, ArrowRight, AtSign, MessagesSquare, Rocket } from "lucide-react";
 import { CenteredShell } from "@/components/centered-shell";
 import { getSessionUser } from "@/lib/auth/session";
 import { getStore } from "@/lib/store";
-import { DEMO_WORKSPACE_ID } from "@/lib/workspaces";
+import { DEMO_WORKSPACE_ID, homeWorkspace } from "@/lib/workspaces";
 import { NewWorkspaceForm } from "./new-workspace-form";
 
 const HOW = [
@@ -13,13 +13,24 @@ const HOW = [
   { icon: Rocket, text: "Publish it to a live link" },
 ];
 
-export default async function NewWorkspacePage() {
-  const user = await getSessionUser();
+export default async function NewWorkspacePage({ searchParams }: PageProps<"/new">) {
+  const [user, query] = await Promise.all([getSessionUser(), searchParams]);
   if (!user) redirect("/login?next=/new");
   const demo = await (await getStore()).getWorkspace(DEMO_WORKSPACE_ID);
 
+  // Only same-site workspace paths, so ?back= can't send people elsewhere.
+  // No workspace yet means "/" lands right back here, so there's nothing to cancel to.
+  const asked = typeof query.back === "string" && /^\/w\/[^/]/.test(query.back) ? query.back : null;
+  const home = asked ? null : await homeWorkspace(user);
+  const back = asked ?? (home ? `/w/${home.slug}` : null);
+
   return (
     <CenteredShell>
+      {back ? (
+        <Link href={back} className="mb-6 flex w-fit items-center gap-1.5 text-sm text-muted hover:text-fg">
+          <ArrowLeft className="size-3.5" /> Back to workspace
+        </Link>
+      ) : null}
       <h1 className="text-2xl font-semibold tracking-tight">Name your workspace</h1>
       <p className="mt-2 text-sm text-muted">
         A private space for your team&apos;s channels, data, and the apps Tembak builds. You can invite people next.
