@@ -7,7 +7,6 @@ import { BuilderPanel } from "@/components/builder/builder-panel";
 import { ChannelView } from "@/components/chat/channel-view";
 import { ThreadPanel } from "@/components/chat/thread-panel";
 import { useChannel, type ChannelMessage, type MessageUpdateHandler } from "@/components/chat/use-channel";
-import { Checklist } from "@/components/onboarding/checklist";
 import { Hint } from "@/components/onboarding/hint";
 import { JoinBanner } from "@/components/onboarding/join-banner";
 import { useOnboarding } from "@/components/onboarding/onboarding-context";
@@ -167,12 +166,7 @@ export function ChannelScope({
           renderAppRef={renderAppRef}
           starters={guided ? [GETTING_STARTED_PROMPT] : undefined}
           onOpenThread={(m) => setThreadId(m.id)}
-          top={
-            <>
-              <JoinBanner apps={apps} onOpenApp={(a) => setOpen({ appId: a.id })} />
-              <Checklist defaultOpen={guided} />
-            </>
-          }
+          top={<JoinBanner apps={apps} onOpenApp={(a) => setOpen({ appId: a.id })} />}
         />
       </main>
 
