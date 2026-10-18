@@ -92,12 +92,18 @@ export function Sidebar({
         {children}
       </nav>
 
-      <div className="flex items-center gap-3 border-t border-line p-3">
-        <Avatar name={user.name} seed={user.uid} photoUrl={user.photoUrl} className="size-7" />
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium">{user.name}</p>
-          {user.email ? <p className="truncate text-xs text-faint">{user.email}</p> : null}
-        </div>
+      <div className="flex items-center gap-1 border-t border-line p-2">
+        <Link
+          href={`/profile?back=${encodeURIComponent(`${base}/c/${channelId}`)}`}
+          title="Edit profile"
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-md p-1 transition hover:bg-hover"
+        >
+          <Avatar name={user.name} seed={user.uid} photoUrl={user.photoUrl} className="size-7" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">{user.name}</p>
+            <p className="truncate text-xs text-faint">{user.title || user.email}</p>
+          </div>
+        </Link>
         <button onClick={signOut} className="rounded p-1.5 text-faint hover:bg-hover hover:text-fg" aria-label="Sign out">
           <LogOut className="size-4" />
         </button>

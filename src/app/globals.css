@@ -107,6 +107,14 @@ body {
 .md strong { color: var(--fg); font-weight: 600; }
 .md h1, .md h2, .md h3 { font-weight: 600; }
 
+@keyframes tembak-sheet-in {
+  from { transform: translateX(24px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.sheet-in {
+  animation: tembak-sheet-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .dot-pulse > span, .sheen { animation: none; }
+  .dot-pulse > span, .sheen, .sheet-in { animation: none; }
 }

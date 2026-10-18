@@ -50,6 +50,7 @@ export async function joinWorkspace(ws: Workspace, user: User, role: Role = "mem
     name: user.name,
     email: user.email,
     photoUrl: user.photoUrl,
+    title: user.title,
     joinedAt: Date.now(),
   };
   await store.addMember(ws.id, member);

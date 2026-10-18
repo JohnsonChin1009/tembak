@@ -1,6 +1,7 @@
 import { EventEmitter } from "node:events";
 import type {
   App,
+  Avatar,
   AppVersion,
   AppVersionMeta,
   Channel,
@@ -9,6 +10,7 @@ import type {
   Member,
   Message,
   OnboardingPatch,
+  Profile,
   Skill,
   Source,
   User,
@@ -24,6 +26,7 @@ const withWorkspace = (app: App): App => ({ ...app, workspaceId: app.workspaceId
 /** Process-local store for development. Data resets on server restart. */
 export class MemoryStore implements Store {
   private users = new Map<string, User>();
+  private avatars = new Map<string, Avatar>();
   private workspaces = new Map<string, Workspace>();
   private members = new Map<string, Map<string, Member>>();
   private channels = new Map<string, Channel>();
@@ -41,6 +44,21 @@ export class MemoryStore implements Store {
   }
   async getUser(uid: string) {
     return this.users.get(uid) ?? null;
+  }
+  async setProfile(uid: string, profile: Profile, resolved: Pick<Member, "name" | "title" | "photoUrl">) {
+    const user = this.users.get(uid) ?? { uid, name: resolved.name };
+    this.users.set(uid, { ...user, profile });
+    for (const id of user.workspaceIds ?? []) {
+      const member = this.members.get(id)?.get(uid);
+      if (member) Object.assign(member, resolved);
+    }
+  }
+  async getAvatar(uid: string) {
+    return this.avatars.get(uid) ?? null;
+  }
+  async setAvatar(uid: string, avatar: Avatar | null) {
+    if (avatar) this.avatars.set(uid, avatar);
+    else this.avatars.delete(uid);
   }
 
   async createWorkspace(workspace: Workspace) {

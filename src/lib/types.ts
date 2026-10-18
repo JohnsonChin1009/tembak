@@ -5,9 +5,28 @@ export type User = {
   name: string;
   email?: string;
   photoUrl?: string;
+  /** From the profile page; see `profile`. */
+  title?: string;
+  /** What the user set on the profile page. Overrides the sign-in name and photo. */
+  profile?: Profile;
   /** Workspaces this user belongs to (avoids a collection-group query). */
   workspaceIds?: string[];
   lastWorkspaceId?: string;
+};
+
+/** Profile edits. `photoUrl: ""` means the user removed their photo. */
+export type Profile = {
+  name?: string;
+  title?: string;
+  photoUrl?: string;
+};
+
+/** A stored profile picture, served from /api/avatars/:uid. */
+export type Avatar = {
+  contentType: string;
+  /** Base64 image bytes. */
+  data: string;
+  updatedAt: number;
 };
 
 export type Workspace = {
@@ -33,6 +52,7 @@ export type Member = {
   name: string;
   email?: string;
   photoUrl?: string;
+  title?: string;
   joinedAt: number;
   onboarding?: MemberOnboarding;
 };

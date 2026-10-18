@@ -3,6 +3,7 @@ import { FieldValue, type DocumentData, type Firestore } from "firebase-admin/fi
 import { firestore } from "@/lib/firebase-admin";
 import type {
   App,
+  Avatar,
   AppVersion,
   AppVersionMeta,
   Channel,
@@ -11,6 +12,7 @@ import type {
   Member,
   Message,
   OnboardingPatch,
+  Profile,
   Skill,
   Source,
   User,
@@ -49,6 +51,29 @@ export class FirestoreStore implements Store {
   }
   async getUser(uid: string) {
     return as<User>((await this.db.collection("users").doc(uid).get()).data());
+  }
+  async setProfile(uid: string, profile: Profile, resolved: Pick<Member, "name" | "title" | "photoUrl">) {
+    const ids = (await this.getUser(uid))?.workspaceIds ?? [];
+    const batch = this.db.batch();
+    // mergeFields replaces the whole profile map, so cleared fields go away.
+    batch.set(this.db.collection("users").doc(uid), { uid, profile }, { mergeFields: ["uid", "profile"] });
+    const member = {
+      name: resolved.name,
+      title: resolved.title ?? FieldValue.delete(),
+      photoUrl: resolved.photoUrl ?? FieldValue.delete(),
+    };
+    // Only touch memberships that still exist, so a stale workspace id can't create a member.
+    const refs = ids.map((id) => this.ws(id).collection("members").doc(uid));
+    const snaps = refs.length ? await this.db.getAll(...refs) : [];
+    for (const snap of snaps) if (snap.exists) batch.update(snap.ref, member);
+    await batch.commit();
+  }
+  async getAvatar(uid: string) {
+    return as<Avatar>((await this.db.collection("avatars").doc(uid).get()).data());
+  }
+  async setAvatar(uid: string, avatar: Avatar | null) {
+    const ref = this.db.collection("avatars").doc(uid);
+    await (avatar ? ref.set(avatar) : ref.delete());
   }
 
   async createWorkspace(workspace: Workspace) {

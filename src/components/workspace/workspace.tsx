@@ -8,7 +8,8 @@ import { PublishControls } from "@/components/builder/publish-controls";
 import { DataSection } from "@/components/data/data-section";
 import { Hint } from "@/components/onboarding/hint";
 import { OnboardingProvider, useOnboarding, type OnboardingInit } from "@/components/onboarding/onboarding-context";
-import type { App, Channel, Source, User, WorkspaceInfo } from "@/lib/types";
+import { PeopleProvider } from "@/components/people/people-context";
+import type { App, Channel, Member, Source, User, WorkspaceInfo } from "@/lib/types";
 import { ChannelScope, type OpenApp } from "./channel-scope";
 import { Section, Sidebar } from "./sidebar";
 import { WorkspaceProvider } from "./workspace-context";
@@ -19,6 +20,8 @@ type Props = {
   workspace: WorkspaceInfo;
   workspaces: WorkspaceLink[];
   channels: Channel[];
+  /** Empty in the open demo; profiles there load on demand. */
+  members: Member[];
   apps: App[];
   sources: Source[];
   channelId: string;
@@ -33,7 +36,13 @@ export function Workspace(props: Props) {
   return (
     <WorkspaceProvider workspace={props.workspace}>
       <OnboardingProvider init={props.onboarding}>
-        <WorkspaceShell {...props} />
+        <PeopleProvider
+          api={`/api/w/${encodeURIComponent(props.workspace.slug)}`}
+          me={props.user}
+          members={props.members}
+        >
+          <WorkspaceShell {...props} />
+        </PeopleProvider>
       </OnboardingProvider>
     </WorkspaceProvider>
   );

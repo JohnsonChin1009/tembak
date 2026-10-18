@@ -37,6 +37,8 @@ export default async function ChannelPage({ params, searchParams }: PageProps<"/
       workspace={workspaceInfo(m)}
       workspaces={workspaces.map((w) => ({ slug: w.slug, name: w.name }))}
       channels={channels}
+      // Onboarding progress is private to each member.
+      members={members.map((member) => ({ ...member, onboarding: undefined }))}
       apps={apps}
       sources={sources.map(redact)}
       serviceAccountEmail={config().serviceAccountEmail}
