@@ -20,7 +20,7 @@ const schema = z.object({
   GOOGLE_GENAI_USE_VERTEXAI: z.string().optional(),
   GOOGLE_CLOUD_PROJECT: z.string().optional(),
   GOOGLE_CLOUD_LOCATION: z.string().default("global"),
-  GEMINI_MODEL: z.string().default("gemini-3.5-flash"),
+  GEMINI_MODEL: z.string().default("gemini-3.5-flash-lite"),
   GEMINI_FAST_MODEL: z.string().default("gemini-3.5-flash-lite"),
   APP_URL: z.string().default("http://localhost:3000"),
   APPS_URL: z.string().optional(),

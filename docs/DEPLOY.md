@@ -24,8 +24,8 @@ Create one at <https://aistudio.google.com/apikey>, ideally in the same GCP proj
 (Alternatively set `GOOGLE_GENAI_USE_VERTEXAI=true` in `deploy.env` and skip the
 key; the service account already has `roles/aiplatform.user`.)
 
-**Check model IDs first:** builds default to `gemini-3.5-flash` and triage to `gemini-3.5-flash-lite`, both on the
-free tier for AI Studio keys (separate models also means separate rate limits). Confirm they're listed at
+**Check model IDs first:** builds and triage both default to `gemini-3.5-flash-lite`, the cheapest current
+model. For better-looking apps set `GEMINI_MODEL=gemini-3.5-flash`. Confirm they're listed at
 <https://ai.google.dev/gemini-api/docs/models> for your key and change
 `GEMINI_MODEL` / `GEMINI_FAST_MODEL` in `deploy.env` if needed.
 

@@ -55,7 +55,7 @@ stretch goal (see PRD 07).
 | Data | Firestore via `firebase-admin` (server-only) | Serverless, free tier, no schema migrations |
 | Realtime | Server-Sent Events backed by Firestore `onSnapshot` | Works across Cloud Run instances, no websocket infra |
 | Auth | Firebase Auth (Google sign-in) to a server session cookie | Workspace users already have Google accounts |
-| LLM | Gemini (`GEMINI_MODEL`, default `gemini-3.5-flash`) | Hackathon requirement; model is configurable |
+| LLM | Gemini (`GEMINI_MODEL`, default `gemini-3.5-flash-lite`) | Hackathon requirement; model is configurable |
 | Generated app format | One self-contained HTML file (Tailwind CDN, Chart.js, vanilla JS) | Instant preview (`iframe srcdoc`), instant publish |
 | Isolation | Preview: `sandbox="allow-scripts"`. Published: `Content-Security-Policy: sandbox` header plus optional separate `APPS_HOST` | Generated code can't touch the user's session |
 | Local dev | `STORE=memory`, `AUTH_MODE=dev`, `AGENT_MODE=mock` | Whole product runs with zero cloud credentials |
