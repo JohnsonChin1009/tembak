@@ -111,6 +111,17 @@ export type Message = {
   replyTo?: string;
   /** A button rendered under the message (seeded welcome messages). */
   action?: "invite";
+  /** Set on thread replies: the id of the channel message they reply to. */
+  threadId?: string;
+  /** Set on a channel message once it has replies. */
+  thread?: ThreadSummary;
+};
+
+export type ThreadSummary = {
+  count: number;
+  lastAt: number;
+  /** Most recent repliers first, at most three; "agent" for Tembak. */
+  uids: string[];
 };
 
 export type App = {

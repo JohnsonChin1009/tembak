@@ -16,10 +16,13 @@ import type {
   User,
   Workspace,
 } from "@/lib/types";
+import { nextThread } from "@/lib/threads";
 import { DEMO_WORKSPACE_ID, type MessageListener, type Store } from "./types";
 
 // Channels and messages are keyed by "<workspaceId>/<channelId>".
 const k = (workspaceId: string, id: string) => `${workspaceId}/${id}`;
+// Thread replies: "<workspaceId>/<channelId>#<threadId>", so workspace cleanup by prefix covers them.
+const tk = (workspaceId: string, channelId: string, threadId: string) => `${k(workspaceId, channelId)}#${threadId}`;
 
 const withWorkspace = (app: App): App => ({ ...app, workspaceId: app.workspaceId ?? DEMO_WORKSPACE_ID });
 
@@ -160,15 +163,22 @@ export class MemoryStore implements Store {
     return m ? structuredClone(m) : null;
   }
   async addMessage(message: Message) {
-    const key = k(message.workspaceId, message.channelId);
+    const key = message.threadId ? tk(message.workspaceId, message.channelId, message.threadId) : k(message.workspaceId, message.channelId);
     const list = this.messages.get(key) ?? [];
     list.push(message);
     list.sort((a, b) => a.createdAt - b.createdAt);
     this.messages.set(key, list);
     this.bus.emit(key, structuredClone(message));
+    if (message.threadId) {
+      const parent = this.messages.get(k(message.workspaceId, message.channelId))?.find((m) => m.id === message.threadId);
+      if (parent) {
+        parent.thread = nextThread(parent.thread, message);
+        this.bus.emit(k(message.workspaceId, message.channelId), structuredClone(parent));
+      }
+    }
   }
-  async updateMessage(workspaceId: string, channelId: string, id: string, patch: Partial<Message>) {
-    const key = k(workspaceId, channelId);
+  async updateMessage(workspaceId: string, channelId: string, id: string, patch: Partial<Message>, threadId?: string) {
+    const key = threadId ? tk(workspaceId, channelId, threadId) : k(workspaceId, channelId);
     const list = this.messages.get(key) ?? [];
     const i = list.findIndex((m) => m.id === id);
     if (i < 0) return;
@@ -176,10 +186,18 @@ export class MemoryStore implements Store {
     this.bus.emit(key, structuredClone(list[i]));
   }
   subscribeMessages(workspaceId: string, channelId: string, listener: MessageListener) {
-    const key = k(workspaceId, channelId);
+    return this.subscribe(k(workspaceId, channelId), () => this.listMessages(workspaceId, channelId), listener);
+  }
+  async listReplies(workspaceId: string, channelId: string, threadId: string) {
+    return structuredClone(this.messages.get(tk(workspaceId, channelId, threadId)) ?? []);
+  }
+  subscribeReplies(workspaceId: string, channelId: string, threadId: string, listener: MessageListener) {
+    return this.subscribe(tk(workspaceId, channelId, threadId), () => this.listReplies(workspaceId, channelId, threadId), listener);
+  }
+  private subscribe(key: string, initial: () => Promise<Message[]>, listener: MessageListener) {
     const onMessage = (m: Message) => listener([m], false);
     this.bus.on(key, onMessage);
-    void this.listMessages(workspaceId, channelId).then((ms) => listener(ms, true));
+    void initial().then((ms) => listener(ms, true));
     return () => {
       this.bus.off(key, onMessage);
     };

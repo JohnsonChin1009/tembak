@@ -21,7 +21,12 @@ export type AgentContext = {
 
 const timeFmt = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
 
-function line(m: Message, apps: Map<string, App>): string | null {
+/** "<@uid>" tags as "@Name", so the agent reads people, not ids. */
+function names(text: string, members: Map<string, string>): string {
+  return text.replace(/<@([A-Za-z0-9_-]+)>/g, (tag, uid: string) => `@${members.get(uid) ?? "someone"}`);
+}
+
+function line(m: Message, apps: Map<string, App>, members: Map<string, string>): string | null {
   const t = timeFmt.format(m.createdAt);
   if (m.author.kind === "agent") {
     if (m.status === "thinking" || m.status === "building") return null;
@@ -30,30 +35,45 @@ function line(m: Message, apps: Map<string, App>): string | null {
     return `[${t}] Tembak (you): ${m.text}${built}`.trim();
   }
   const about = m.appRef ? ` [about app id ${m.appRef.appId}]` : "";
-  return `[${t}] ${m.author.name}${about}: ${m.text}`;
+  return `[${t}] ${m.author.name}${about}: ${names(m.text, members)}`;
+}
+
+/** In a thread, the conversation is the parent message and its replies. */
+function threadHistory(trigger: Message): Promise<Message[]> | null {
+  const { workspaceId, channelId, threadId } = trigger;
+  if (!threadId) return null;
+  return getStore().then(async (store) => {
+    const [parent, replies] = await Promise.all([
+      store.getMessage(workspaceId, channelId, threadId),
+      store.listReplies(workspaceId, channelId, threadId),
+    ]);
+    return parent ? [parent, ...replies] : replies;
+  });
 }
 
 export async function buildContext(trigger: Message): Promise<AgentContext> {
   const store = await getStore();
-  const [history, allApps, sources, workspace, skills] = await Promise.all([
-    store.listMessages(trigger.workspaceId, trigger.channelId, HISTORY + 5),
+  const [history, allApps, sources, workspace, skills, members] = await Promise.all([
+    threadHistory(trigger) ?? store.listMessages(trigger.workspaceId, trigger.channelId, HISTORY + 5),
     store.listApps(trigger.workspaceId),
     store.listSources(trigger.workspaceId),
     store.getWorkspace(trigger.workspaceId),
     workspaceSkills(trigger.workspaceId),
+    store.listMembers(trigger.workspaceId),
   ]);
+  const memberNames = new Map(members.map((m) => [m.uid, m.name]));
   const channelApps = allApps.filter((a) => a.channelId === trigger.channelId);
   const appsById = new Map(allApps.map((a) => [a.id, a]));
 
   const upto = history.filter((m) => m.createdAt <= trigger.createdAt).slice(-HISTORY);
   const transcript = upto
-    .map((m) => line(m, appsById))
+    .map((m) => line(m, appsById, memberNames))
     .filter(Boolean)
     .join("\n");
 
   return {
     trigger,
-    request: stripMention(trigger.text),
+    request: names(stripMention(trigger.text), memberNames),
     transcript,
     channelApps,
     targetApp: trigger.appRef ? (appsById.get(trigger.appRef.appId) ?? null) : null,

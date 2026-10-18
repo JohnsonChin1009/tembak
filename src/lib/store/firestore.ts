@@ -1,5 +1,5 @@
 import "server-only";
-import { FieldValue, type DocumentData, type Firestore } from "firebase-admin/firestore";
+import { FieldValue, type DocumentData, type Firestore, type Query } from "firebase-admin/firestore";
 import { firestore } from "@/lib/firebase-admin";
 import type {
   App,
@@ -18,6 +18,7 @@ import type {
   User,
   Workspace,
 } from "@/lib/types";
+import { nextThread } from "@/lib/threads";
 import { DEMO_WORKSPACE_ID, type MessageListener, type Store } from "./types";
 
 const as = <T>(d: DocumentData | undefined) => (d ? (d as T) : null);
@@ -38,6 +39,9 @@ export class FirestoreStore implements Store {
   }
   private messagesCol(workspaceId: string, channelId: string) {
     return this.channelsCol(workspaceId).doc(channelId).collection("messages");
+  }
+  private repliesCol(workspaceId: string, channelId: string, threadId: string) {
+    return this.messagesCol(workspaceId, channelId).doc(threadId).collection("replies");
   }
   private sourcesCol(workspaceId: string) {
     return this.ws(workspaceId).collection("sources");
@@ -169,16 +173,38 @@ export class FirestoreStore implements Store {
     return as<Message>((await this.messagesCol(workspaceId, channelId).doc(id).get()).data());
   }
   async addMessage(message: Message) {
-    await this.messagesCol(message.workspaceId, message.channelId).doc(message.id).set(message);
+    const col = this.messagesCol(message.workspaceId, message.channelId);
+    if (!message.threadId) {
+      await col.doc(message.id).set(message);
+      return;
+    }
+    // Reply and summary together, so concurrent replies can't lose a count.
+    const parent = col.doc(message.threadId);
+    await this.db.runTransaction(async (tx) => {
+      const current = as<Message>((await tx.get(parent)).data());
+      tx.set(parent.collection("replies").doc(message.id), message);
+      if (current) tx.update(parent, { thread: nextThread(current.thread, message) });
+    });
   }
-  async updateMessage(workspaceId: string, channelId: string, id: string, patch: Partial<Message>) {
-    await this.messagesCol(workspaceId, channelId).doc(id).set(patch, { merge: true });
+  async updateMessage(workspaceId: string, channelId: string, id: string, patch: Partial<Message>, threadId?: string) {
+    const col = this.messagesCol(workspaceId, channelId);
+    const ref = threadId ? col.doc(threadId).collection("replies").doc(id) : col.doc(id);
+    await ref.set(patch, { merge: true });
+  }
+  async listReplies(workspaceId: string, channelId: string, threadId: string) {
+    const snap = await this.repliesCol(workspaceId, channelId, threadId).orderBy("createdAt").limit(500).get();
+    return snap.docs.map((d) => d.data() as Message);
+  }
+  subscribeReplies(workspaceId: string, channelId: string, threadId: string, listener: MessageListener) {
+    return this.subscribe(this.repliesCol(workspaceId, channelId, threadId).orderBy("createdAt", "desc").limit(500), listener);
   }
   subscribeMessages(workspaceId: string, channelId: string, listener: MessageListener) {
+    return this.subscribe(this.messagesCol(workspaceId, channelId).orderBy("createdAt", "desc").limit(100), listener);
+  }
+  /** Newest-first query in; oldest-first snapshot, then changes, out. */
+  private subscribe(query: Query, listener: MessageListener) {
     let first = true;
-    return this.messagesCol(workspaceId, channelId)
-      .orderBy("createdAt", "desc")
-      .limit(100)
+    return query
       .onSnapshot(
         (snap) => {
           if (first) {

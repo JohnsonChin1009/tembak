@@ -54,10 +54,22 @@ export interface Store {
   /** Most recent `limit` messages, oldest first. */
   listMessages(workspaceId: string, channelId: string, limit?: number): Promise<Message[]>;
   getMessage(workspaceId: string, channelId: string, id: string): Promise<Message | null>;
+  /** A message with `threadId` is stored as a reply and bumps the parent's `thread` summary. */
   addMessage(message: Message): Promise<void>;
-  updateMessage(workspaceId: string, channelId: string, id: string, patch: Partial<Message>): Promise<void>;
+  /** Pass `threadId` to update a thread reply. */
+  updateMessage(
+    workspaceId: string,
+    channelId: string,
+    id: string,
+    patch: Partial<Message>,
+    threadId?: string,
+  ): Promise<void>;
   /** Emits the recent history once (initial=true), then every added or changed message. */
   subscribeMessages(workspaceId: string, channelId: string, listener: MessageListener): () => void;
+  /** A thread's replies, oldest first. */
+  listReplies(workspaceId: string, channelId: string, threadId: string): Promise<Message[]>;
+  /** Like `subscribeMessages`, for one thread's replies. */
+  subscribeReplies(workspaceId: string, channelId: string, threadId: string, listener: MessageListener): () => void;
 
   listApps(workspaceId: string): Promise<App[]>;
   getApp(id: string): Promise<App | null>;

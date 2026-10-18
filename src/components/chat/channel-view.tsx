@@ -23,6 +23,7 @@ export function ChannelView({
   renderAppRef,
   starters = STARTERS,
   top,
+  onOpenThread,
 }: {
   channel: Channel;
   messages: ChannelMessage[];
@@ -33,6 +34,7 @@ export function ChannelView({
   starters?: string[];
   /** Pinned above the messages (onboarding checklist, banners). */
   top?: React.ReactNode;
+  onOpenThread?: (message: ChannelMessage) => void;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const atBottom = useRef(true);
@@ -93,7 +95,15 @@ export function ChannelView({
               prev.author.uid === m.author.uid &&
               m.createdAt - prev.createdAt < GROUP_WINDOW_MS &&
               !m.appRef;
-            return <MessageItem key={m.id} message={m} grouped={grouped} renderAppRef={renderAppRef} />;
+            return (
+              <MessageItem
+                key={m.id}
+                message={m}
+                grouped={grouped}
+                renderAppRef={renderAppRef}
+                onOpenThread={onOpenThread}
+              />
+            );
           })}
         </div>
       </div>
@@ -132,9 +142,6 @@ export function ChannelView({
             return send(text);
           }}
         />
-        <p className="mt-1.5 px-1 text-[11px] text-faint">
-          <kbd className="font-mono">Enter</kbd> to send · <kbd className="font-mono">Shift+Enter</kbd> for a new line
-        </p>
       </div>
     </div>
   );
