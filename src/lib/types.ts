@@ -21,6 +21,8 @@ export type Workspace = {
   inviteToken: string;
   /** Any signed-in user can join (the Demo workspace). */
   open?: boolean;
+  /** Team rules injected into every agent run in this workspace. */
+  agentRules?: string;
 };
 
 export type Role = "owner" | "member";
@@ -121,13 +123,18 @@ export type AppVersionMeta = Omit<AppVersion, "html">;
 
 export type Row = Record<string, string | number | boolean | null>;
 
-export type SourceKind = "sheet" | "csv" | "json" | "sample";
+export type SourceKind = "sheet" | "csv" | "json" | "sample" | "notion" | "linear";
+
+export type LinearResource = "issues" | "projects";
 
 export type SourceConfig =
   | { kind: "sheet"; url: string; range?: string }
   | { kind: "csv"; text: string }
   | { kind: "json"; url: string; headerName?: string; headerValue?: string }
-  | { kind: "sample"; dataset: string };
+  | { kind: "sample"; dataset: string }
+  // Notion and Linear read through the workspace's connection (no token on the source).
+  | { kind: "notion"; dataSourceId: string; title?: string }
+  | { kind: "linear"; resource: LinearResource; teamKey?: string };
 
 export type Source = {
   id: string;
@@ -142,4 +149,36 @@ export type Source = {
   rowCount?: number;
   updatedAt: number;
   createdBy: string;
+};
+
+export type ConnectionProvider = "notion" | "linear";
+
+/** A workspace's link to Notion or Linear. Tokens are encrypted at rest (lib/crypto). */
+export type Connection = {
+  workspaceId: string;
+  provider: ConnectionProvider;
+  authType: "oauth" | "api_key";
+  accessToken: string;
+  refreshToken?: string;
+  /** Epoch ms; only set when the provider says tokens expire. */
+  expiresAt?: number;
+  /** Notion workspace or Linear organization name, for display. */
+  accountName?: string;
+  accountId?: string;
+  connectedBy: string;
+  connectedAt: number;
+};
+
+/** What the client sees about a connection: never the tokens. */
+export type ConnectionInfo = Omit<Connection, "accessToken" | "refreshToken" | "expiresAt">;
+
+/** A named recipe the agent can load on demand. */
+export type Skill = {
+  id: string;
+  workspaceId: string;
+  name: string;
+  description: string;
+  body: string;
+  createdBy: string;
+  updatedAt: number;
 };

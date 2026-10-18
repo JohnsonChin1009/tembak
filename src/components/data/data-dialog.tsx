@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import clsx from "clsx";
-import { Check, Copy, Database, FileSpreadsheet, Globe, LoaderCircle, Trash2, X } from "lucide-react";
+import { Check, Copy, Database, FileSpreadsheet, FlaskConical, Globe, LoaderCircle, Trash2, X } from "lucide-react";
 import { useWorkspace } from "@/components/workspace/workspace-context";
-import type { Source } from "@/lib/types";
+import type { Source, SourceConfig } from "@/lib/types";
+import { ConnectorPanel, ProviderMark } from "./connector-panel";
 
-type Tab = "sheet" | "csv" | "json";
+export type Tab = "sheet" | "notion" | "linear" | "csv" | "json";
+
+type Preview = Pick<Source, "columns" | "sample" | "rowCount">;
 
 export function Modal({ onClose, children, wide }: { onClose: () => void; children: React.ReactNode; wide?: boolean }) {
   useEffect(() => {
@@ -33,16 +36,25 @@ export function Modal({ onClose, children, wide }: { onClose: () => void; childr
 
 export function AddDataDialog({
   serviceAccountEmail,
+  initialTab = "sheet",
+  oauthError,
   onClose,
   onCreated,
 }: {
   serviceAccountEmail?: string;
+  /** Opens on Notion or Linear after an OAuth round trip. */
+  initialTab?: Tab;
+  oauthError?: string | null;
   onClose: () => void;
   onCreated: (s: Source) => void;
 }) {
   const { api } = useWorkspace();
-  const [tab, setTab] = useState<Tab>("sheet");
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [name, setName] = useState("");
+  const [suggested, setSuggested] = useState("");
+  const [connector, setConnector] = useState<SourceConfig | null>(null);
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const [testing, setTesting] = useState(false);
   const [url, setUrl] = useState("");
   const [csv, setCsv] = useState("");
   const [headerName, setHeaderName] = useState("");
@@ -51,21 +63,46 @@ export function AddDataDialog({
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  const pickConnector = useCallback((config: SourceConfig | null) => {
+    setConnector(config);
+    setPreview(null);
+  }, []);
+
+  function currentConfig(): SourceConfig | null {
+    if (tab === "notion" || tab === "linear") return connector;
+    if (tab === "sheet") return { kind: "sheet", url };
+    if (tab === "csv") return { kind: "csv", text: csv };
+    return { kind: "json", url, headerName: headerName || undefined, headerValue: headerValue || undefined };
+  }
+
+  async function test() {
+    const config = currentConfig();
+    if (!config) return;
+    setTesting(true);
+    setError(null);
+    setPreview(null);
+    const res = await fetch(`${api}/sources/test`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ config }),
+    }).catch(() => null);
+    const body = (await res?.json().catch(() => ({}))) as Preview & { error?: string };
+    setTesting(false);
+    if (!res?.ok) return setError(body.error ?? "Couldn't read that source");
+    setPreview(body);
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    const config = currentConfig();
+    if (!config) return setError(tab === "notion" ? "Pick a database first." : "Connect first.");
     setBusy(true);
     setError(null);
-    const config =
-      tab === "sheet"
-        ? { kind: "sheet", url }
-        : tab === "csv"
-          ? { kind: "csv", text: csv }
-          : { kind: "json", url, headerName: headerName || undefined, headerValue: headerValue || undefined };
     try {
       const res = await fetch(`${api}/sources`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name: name || defaultName(tab), config }),
+        body: JSON.stringify({ name: name || suggested || defaultName(tab), config }),
       });
       const body = (await res.json()) as Source & { error?: string };
       if (!res.ok) throw new Error(body.error ?? "Couldn't add that source");
@@ -99,20 +136,20 @@ export function AddDataDialog({
         </div>
 
         <div className="space-y-4 p-5">
-          <div className="grid grid-cols-3 gap-1 rounded-xl bg-bg p-1">
-            {(
-              [
-                ["sheet", "Google Sheet", FileSpreadsheet],
-                ["csv", "CSV", Database],
-                ["json", "JSON API", Globe],
-              ] as const
-            ).map(([t, label, Icon]) => (
+          <div className="grid grid-cols-5 gap-1 rounded-xl bg-bg p-1">
+            {TABS.map(([t, label, Icon]) => (
               <button
                 key={t}
                 type="button"
-                onClick={() => setTab(t)}
+                onClick={() => {
+                  setTab(t);
+                  setConnector(null);
+                  setSuggested("");
+                  setPreview(null);
+                  setError(null);
+                }}
                 className={clsx(
-                  "flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-medium transition",
+                  "flex flex-col items-center justify-center gap-1 rounded-lg py-2 text-[11px] font-medium transition sm:flex-row sm:gap-1.5 sm:text-xs",
                   tab === t ? "bg-raised text-fg shadow-sm" : "text-faint hover:text-muted",
                 )}
               >
@@ -121,9 +158,15 @@ export function AddDataDialog({
             ))}
           </div>
 
-          <Field label="Name">
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder={defaultName(tab)} className={input} />
-          </Field>
+          {tab === "notion" || tab === "linear" ? (
+            <ConnectorPanel key={tab} provider={tab} oauthError={tab === initialTab ? oauthError : null} onConfig={pickConnector} onName={setSuggested} />
+          ) : null}
+
+          {(tab !== "notion" && tab !== "linear") || connector ? (
+            <Field label="Name">
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder={suggested || defaultName(tab)} className={input} />
+            </Field>
+          ) : null}
 
           {tab === "sheet" ? (
             <>
@@ -202,6 +245,15 @@ export function AddDataDialog({
             </>
           ) : null}
 
+          {preview ? (
+            <div className="space-y-2">
+              <p className="text-xs text-muted">
+                Found <strong className="text-fg">{(preview.rowCount ?? 0).toLocaleString()} rows</strong> and {preview.columns.length} columns.
+              </p>
+              <PreviewTable source={preview} />
+            </div>
+          ) : null}
+
           {error ? (
             <p role="alert" className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
               {error}
@@ -210,12 +262,23 @@ export function AddDataDialog({
         </div>
 
         <div className="flex justify-end gap-2 border-t border-line px-5 py-4">
+          {tab === "csv" ? null : (
+            <button
+              type="button"
+              onClick={test}
+              disabled={testing || busy || !currentConfig()}
+              className="mr-auto flex h-9 items-center gap-2 rounded-lg px-3 text-sm text-muted hover:bg-hover hover:text-fg disabled:opacity-50"
+            >
+              {testing ? <LoaderCircle className="size-3.5 animate-spin" /> : <FlaskConical className="size-3.5" />}
+              Test connection
+            </button>
+          )}
           <button type="button" onClick={onClose} className="h-9 rounded-lg px-4 text-sm text-muted hover:bg-hover hover:text-fg">
             Cancel
           </button>
           <button
             type="submit"
-            disabled={busy}
+            disabled={busy || ((tab === "notion" || tab === "linear") && !connector)}
             className="flex h-9 items-center gap-2 rounded-lg bg-accent px-4 text-sm font-medium text-accent-ink transition hover:brightness-110 disabled:opacity-60"
           >
             {busy ? <LoaderCircle className="size-3.5 animate-spin" /> : null}
@@ -227,8 +290,19 @@ export function AddDataDialog({
   );
 }
 
+const NotionIcon = ({ className }: { className?: string }) => <ProviderMark provider="notion" className={className} />;
+const LinearIcon = ({ className }: { className?: string }) => <ProviderMark provider="linear" className={className} />;
+
+const TABS = [
+  ["sheet", "Sheet", FileSpreadsheet],
+  ["notion", "Notion", NotionIcon],
+  ["linear", "Linear", LinearIcon],
+  ["csv", "CSV", Database],
+  ["json", "JSON", Globe],
+] as const;
+
 function defaultName(tab: Tab) {
-  return tab === "sheet" ? "Campaign sheet" : tab === "csv" ? "Uploaded data" : "API data";
+  return { sheet: "Campaign sheet", notion: "Notion database", linear: "Linear issues", csv: "Uploaded data", json: "API data" }[tab];
 }
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
@@ -301,7 +375,7 @@ export function SourceDialog({
   );
 }
 
-export function PreviewTable({ source }: { source: Source }) {
+export function PreviewTable({ source }: { source: Pick<Source, "columns" | "sample"> }) {
   if (!source.sample.length) return <p className="text-sm text-faint">No rows found.</p>;
   return (
     <div className="overflow-auto rounded-xl border border-line">
@@ -332,5 +406,5 @@ export function PreviewTable({ source }: { source: Source }) {
 }
 
 export function kindLabel(s: Source) {
-  return { sheet: "Google Sheet", csv: "CSV", json: "JSON API", sample: "Sample" }[s.kind];
+  return { sheet: "Google Sheet", csv: "CSV", json: "JSON API", sample: "Sample", notion: "Notion", linear: "Linear" }[s.kind];
 }

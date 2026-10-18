@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { handle, HttpError, json, parseBody } from "@/lib/api";
 import { SourceFetchError } from "@/lib/data/fetch";
+import { sourceConfigSchema } from "@/lib/data/schema";
 import { createSource, redact } from "@/lib/data/sources";
 import { getStore } from "@/lib/store";
 import { requireMember } from "@/lib/workspaces";
@@ -12,16 +13,7 @@ export const GET = handle(async (_req: Request, ctx: RouteContext<"/api/w/[ws]/s
 
 const body = z.object({
   name: z.string().trim().min(1).max(80),
-  config: z.discriminatedUnion("kind", [
-    z.object({ kind: z.literal("sheet"), url: z.string().url(), range: z.string().max(100).optional() }),
-    z.object({ kind: z.literal("csv"), text: z.string().min(1).max(1_000_000) }),
-    z.object({
-      kind: z.literal("json"),
-      url: z.string().url(),
-      headerName: z.string().max(100).optional(),
-      headerValue: z.string().max(2000).optional(),
-    }),
-  ]),
+  config: sourceConfigSchema,
 });
 
 export const POST = handle(async (req: Request, ctx: RouteContext<"/api/w/[ws]/sources">) => {

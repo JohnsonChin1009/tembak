@@ -3,9 +3,12 @@ import type {
   AppVersion,
   AppVersionMeta,
   Channel,
+  Connection,
+  ConnectionProvider,
   Member,
   Message,
   OnboardingPatch,
+  Skill,
   Source,
   User,
   Workspace,
@@ -68,4 +71,15 @@ export interface Store {
   getSourceByKey(workspaceId: string, key: string): Promise<Source | null>;
   upsertSource(source: Source): Promise<void>;
   deleteSource(workspaceId: string, id: string): Promise<void>;
+
+  /** Notion and Linear links, one per provider per workspace. Tokens arrive and leave sealed. */
+  listConnections(workspaceId: string): Promise<Connection[]>;
+  getConnection(workspaceId: string, provider: ConnectionProvider): Promise<Connection | null>;
+  upsertConnection(connection: Connection): Promise<void>;
+  deleteConnection(workspaceId: string, provider: ConnectionProvider): Promise<void>;
+
+  /** Workspace skills for the agent (built-ins live in code). */
+  listSkills(workspaceId: string): Promise<Skill[]>;
+  upsertSkill(skill: Skill): Promise<void>;
+  deleteSkill(workspaceId: string, id: string): Promise<void>;
 }

@@ -4,13 +4,17 @@ import { isIP } from "node:net";
 import { GoogleAuth } from "google-auth-library";
 import { SAMPLE_DATASETS } from "@/lib/data/samples";
 import type { Row, Source, SourceConfig } from "@/lib/types";
+import { linearRows } from "@/lib/connectors/linear";
+import { notionRows } from "@/lib/connectors/notion";
+import { unseal } from "@/lib/crypto";
+import { SourceFetchError } from "./errors";
 import { rowsFromCsv, rowsFromJson, rowsFromTable } from "./normalize";
 
 const CACHE_MS = 60_000;
 const TIMEOUT_MS = 15_000;
 const cache = new Map<string, { rows: Row[]; until: number }>();
 
-export class SourceFetchError extends Error {}
+export { SourceFetchError };
 
 export function parseSheetUrl(url: string): { id: string; gid?: string } | null {
   const m = /docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/.exec(url);
@@ -113,7 +117,7 @@ async function fetchJson(cfg: Extract<SourceConfig, { kind: "json" }>): Promise<
   const headers: Record<string, string> = { accept: "application/json" };
   if (cfg.headerName && cfg.headerValue) {
     if (/metadata|^host$/i.test(cfg.headerName)) throw new SourceFetchError("That header isn't allowed.");
-    headers[cfg.headerName] = cfg.headerValue;
+    headers[cfg.headerName] = unseal(cfg.headerValue);
   }
   // No redirects: a public URL could otherwise bounce to an internal one.
   const res = await fetch(url, { headers, redirect: "manual", signal: AbortSignal.timeout(TIMEOUT_MS) });
@@ -126,7 +130,8 @@ async function fetchJson(cfg: Extract<SourceConfig, { kind: "json" }>): Promise<
   }
 }
 
-export async function fetchRows(config: SourceConfig): Promise<Row[]> {
+/** `workspaceId` is needed for Notion and Linear, which read through the workspace's connection. */
+export async function fetchRows(config: SourceConfig, workspaceId?: string): Promise<Row[]> {
   switch (config.kind) {
     case "sample": {
       const ds = SAMPLE_DATASETS[config.dataset];
@@ -139,6 +144,11 @@ export async function fetchRows(config: SourceConfig): Promise<Row[]> {
       return fetchSheet(config);
     case "json":
       return fetchJson(config);
+    case "notion":
+    case "linear": {
+      if (!workspaceId) throw new SourceFetchError("Missing workspace for this connector.");
+      return config.kind === "notion" ? notionRows(workspaceId, config) : linearRows(workspaceId, config);
+    }
   }
 }
 
@@ -147,7 +157,7 @@ export async function sourceRows(source: Source): Promise<Row[]> {
   const key = `${source.id}:${source.updatedAt}`;
   const hit = cache.get(key);
   if (hit && hit.until > Date.now()) return hit.rows;
-  const rows = await fetchRows(source.config);
+  const rows = await fetchRows(source.config, source.workspaceId);
   cache.set(key, { rows, until: Date.now() + CACHE_MS });
   return rows;
 }

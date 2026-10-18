@@ -23,9 +23,10 @@ Server-only, read once from env, validated with zod.
 | `APP_URL` | `http://localhost:3000` | Public URL of the workspace |
 | `APPS_URL` | `APP_URL` | Public origin for published apps, e.g. `https://apps.example.com` |
 | `ALLOWED_EMAIL_DOMAINS` | (none) | Comma list; empty means any Google account |
-| `SESSION_SECRET` | dev value | HMAC key for dev-mode session cookies |
+| `SESSION_SECRET` | dev value | HMAC key for dev-mode sessions and OAuth state; also the source of the key that encrypts connector tokens |
 | `FIREBASE_WEB_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID` | (none) | Web config for client Google sign-in, passed to the login page at runtime (no build-time env) |
 | `SERVICE_ACCOUNT_EMAIL` | (none) | Shown in the Add Sheet dialog |
+| `NOTION_OAUTH_CLIENT_ID`, `NOTION_OAUTH_CLIENT_SECRET`, `LINEAR_OAUTH_CLIENT_ID`, `LINEAR_OAUTH_CLIENT_SECRET` | (none) | Optional OAuth apps for the Notion and Linear connectors (PRD 10); without them, API keys only |
 
 ### Store (`src/lib/store/`)
 

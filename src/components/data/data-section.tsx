@@ -1,12 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Database, FileSpreadsheet, Globe, Plus, Sparkle } from "lucide-react";
 import { Section } from "@/components/workspace/sidebar";
-import type { Source } from "@/lib/types";
-import { AddDataDialog, SourceDialog } from "./data-dialog";
+import type { Source, SourceKind } from "@/lib/types";
+import { ProviderMark } from "./connector-panel";
+import { AddDataDialog, SourceDialog, type Tab } from "./data-dialog";
 
-const ICONS = { sheet: FileSpreadsheet, csv: Database, json: Globe, sample: Sparkle };
+const NotionIcon = ({ className }: { className?: string }) => <ProviderMark provider="notion" className={className} />;
+const LinearIcon = ({ className }: { className?: string }) => <ProviderMark provider="linear" className={className} />;
+const ICONS: Record<SourceKind, React.ComponentType<{ className?: string }>> = {
+  sheet: FileSpreadsheet,
+  csv: Database,
+  json: Globe,
+  sample: Sparkle,
+  notion: NotionIcon,
+  linear: LinearIcon,
+};
+
+/** After an OAuth round trip the URL carries ?connected=notion or ?connect_error=...&provider=notion. */
+function oauthReturn(params: URLSearchParams): { tab: Tab; error: string | null } | null {
+  const provider = params.get("connected") ?? params.get("provider");
+  if (provider !== "notion" && provider !== "linear") return null;
+  return { tab: provider, error: params.get("connect_error") };
+}
 
 export function DataSection({
   sources,
@@ -17,8 +35,22 @@ export function DataSection({
   serviceAccountEmail?: string;
   onChange: (sources: Source[]) => void;
 }) {
-  const [adding, setAdding] = useState(false);
+  const params = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const [returned] = useState(() => oauthReturn(params));
+  const [adding, setAdding] = useState(!!returned);
   const [viewing, setViewing] = useState<Source | null>(null);
+
+  // Drop the OAuth query params so a reload doesn't reopen the dialog.
+  useEffect(() => {
+    if (!returned) return;
+    const next = new URLSearchParams(params);
+    for (const k of ["connected", "connect_error", "provider"]) next.delete(k);
+    router.replace(next.size ? `${pathname}?${next}` : pathname, { scroll: false });
+    // Only once, on the return from the provider.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <>
@@ -57,6 +89,8 @@ export function DataSection({
       {adding ? (
         <AddDataDialog
           serviceAccountEmail={serviceAccountEmail}
+          initialTab={returned?.tab}
+          oauthError={returned?.error}
           onClose={() => setAdding(false)}
           onCreated={(s) => {
             onChange([...sources, s].sort((a, b) => a.name.localeCompare(b.name)));

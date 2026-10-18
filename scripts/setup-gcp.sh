@@ -5,6 +5,8 @@
 #   GEMINI_API_KEY=... ./scripts/setup-gcp.sh
 #
 # GEMINI_API_KEY is optional if you use Vertex AI (GOOGLE_GENAI_USE_VERTEXAI=true).
+# Connector OAuth secrets are optional too (Notion/Linear fall back to API keys):
+#   NOTION_OAUTH_CLIENT_SECRET=... LINEAR_OAUTH_CLIENT_SECRET=... ./scripts/setup-gcp.sh
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -81,6 +83,14 @@ elif ! gcloud secrets describe GEMINI_API_KEY >/dev/null 2>&1; then
   put_secret GEMINI_API_KEY "unset"
   echo "  (no GEMINI_API_KEY given; set it later with: GEMINI_API_KEY=... ./scripts/setup-gcp.sh)"
 fi
+# OAuth client secrets for the Notion and Linear connectors. "unset" means API keys only.
+for name in NOTION_OAUTH_CLIENT_SECRET LINEAR_OAUTH_CLIENT_SECRET; do
+  if [ -n "${!name:-}" ]; then
+    put_secret "$name" "${!name}"
+  elif ! gcloud secrets describe "$name" >/dev/null 2>&1; then
+    put_secret "$name" "unset"
+  fi
+done
 
 cat <<EOF
 

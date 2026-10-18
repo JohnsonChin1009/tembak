@@ -36,6 +36,8 @@ env_vars() {
     "GEMINI_FAST_MODEL=${GEMINI_FAST_MODEL:-gemini-3.5-flash-lite}"
     "GOOGLE_GENAI_USE_VERTEXAI=${GOOGLE_GENAI_USE_VERTEXAI:-false}"
     "GOOGLE_CLOUD_LOCATION=${GOOGLE_CLOUD_LOCATION:-global}"
+    "NOTION_OAUTH_CLIENT_ID=${NOTION_OAUTH_CLIENT_ID:-}"
+    "LINEAR_OAUTH_CLIENT_ID=${LINEAR_OAUTH_CLIENT_ID:-}"
   )
   # gcloud's ^DELIM^ syntax lets values contain commas and @.
   local out="^##^" first=1
@@ -44,6 +46,14 @@ env_vars() {
   done
   printf '%s' "$out"
 }
+
+# Secrets mounted as env vars. The connector ones are skipped until setup-gcp.sh has created them.
+secrets="GEMINI_API_KEY=GEMINI_API_KEY:latest,SESSION_SECRET=SESSION_SECRET:latest"
+for name in NOTION_OAUTH_CLIENT_SECRET LINEAR_OAUTH_CLIENT_SECRET; do
+  if gcloud secrets describe "$name" --project "$PROJECT_ID" >/dev/null 2>&1; then
+    secrets+=",${name}=${name}:latest"
+  fi
+done
 
 # Placeholder URL on the very first deploy; fixed up right after.
 FIRST_URL="${APP_URL:-https://placeholder.invalid}"
@@ -63,7 +73,7 @@ gcloud run deploy "$SERVICE" \
   --concurrency 80 \
   --timeout 300 \
   --set-env-vars "$(env_vars "$FIRST_URL" "${APPS_URL:-$FIRST_URL}")" \
-  --set-secrets "GEMINI_API_KEY=GEMINI_API_KEY:latest,SESSION_SECRET=SESSION_SECRET:latest" \
+  --set-secrets "$secrets" \
   --quiet
 
 URL="$(gcloud run services describe "$SERVICE" --project "$PROJECT_ID" --region "$REGION" --format='value(status.url)')"

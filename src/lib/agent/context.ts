@@ -2,6 +2,7 @@ import "server-only";
 import { stripMention } from "@/lib/mentions";
 import { getStore } from "@/lib/store";
 import type { App, AppVersion, Message, Source } from "@/lib/types";
+import { workspaceSkills, type SkillDef } from "./skills";
 
 const HISTORY = 40;
 
@@ -13,6 +14,9 @@ export type AgentContext = {
   /** App the user is explicitly asking to change (from the builder panel). */
   targetApp: App | null;
   sources: Source[];
+  /** Workspace rules for every run (Agent settings). */
+  rules?: string;
+  skills: SkillDef[];
 };
 
 const timeFmt = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
@@ -31,10 +35,12 @@ function line(m: Message, apps: Map<string, App>): string | null {
 
 export async function buildContext(trigger: Message): Promise<AgentContext> {
   const store = await getStore();
-  const [history, allApps, sources] = await Promise.all([
+  const [history, allApps, sources, workspace, skills] = await Promise.all([
     store.listMessages(trigger.workspaceId, trigger.channelId, HISTORY + 5),
     store.listApps(trigger.workspaceId),
     store.listSources(trigger.workspaceId),
+    store.getWorkspace(trigger.workspaceId),
+    workspaceSkills(trigger.workspaceId),
   ]);
   const channelApps = allApps.filter((a) => a.channelId === trigger.channelId);
   const appsById = new Map(allApps.map((a) => [a.id, a]));
@@ -52,6 +58,8 @@ export async function buildContext(trigger: Message): Promise<AgentContext> {
     channelApps,
     targetApp: trigger.appRef ? (appsById.get(trigger.appRef.appId) ?? null) : null,
     sources,
+    rules: workspace?.agentRules?.trim() || undefined,
+    skills,
   };
 }
 
@@ -62,6 +70,14 @@ export function describeSources(sources: Source[]): string {
       const sample = JSON.stringify(s.sample.slice(0, 3));
       return `- key "${s.key}": ${s.name} (${s.kind}${s.rowCount ? `, ${s.rowCount} rows` : ""})\n  columns: ${s.columns.join(", ")}\n  sample rows: ${sample}`;
     })
+    .join("\n");
+}
+
+/** Without sample rows: what the agent loop needs to pick a source (query_source shows data). */
+export function describeSourcesBrief(sources: Source[]): string {
+  if (sources.length === 0) return "(none connected)";
+  return sources
+    .map((s) => `- key "${s.key}": ${s.name} (${s.kind}${s.rowCount ? `, ${s.rowCount} rows` : ""}); columns: ${s.columns.join(", ")}`)
     .join("\n");
 }
 

@@ -105,6 +105,65 @@ Console > Cloud Build > Triggers > Create trigger > connect the GitHub repo >
 branch `^main$` > configuration file `cloudbuild.yaml`. It reuses the env vars and
 secrets from the last `deploy.sh` run and only swaps the image.
 
+## 7. Optional: Connectors (Notion, Linear)
+
+Teams connect Notion and Linear from **Data → Add data**. With an OAuth app
+configured they see a **Connect Notion** / **Connect Linear** button (like
+Claude's connectors); without one, they paste an API key instead, which also
+works. Both are per workspace, read only, and stored encrypted (AES-256-GCM with
+a key derived from `SESSION_SECRET`; rotating it means reconnecting).
+
+The redirect URIs to register, using your `APP_URL`:
+
+```
+https://<APP_URL host>/api/oauth/notion/callback
+https://<APP_URL host>/api/oauth/linear/callback
+```
+
+Register the URL people actually use (the custom domain if you mapped one, or
+the `*.run.app` URL). If `APP_URL` changes, update the redirect URIs too.
+
+### Notion (public integration)
+
+1. Go to <https://www.notion.so/profile/integrations> → **New integration**.
+2. Type: **Public**. Name it Tembak, pick the workspace that owns it, and set
+   installation scope to **Any workspace** (it can't be changed later).
+3. Fill in the required listing fields: company name, website, tagline, privacy
+   policy URL, terms of use URL, and support email. For the hackathon, your
+   landing page URL works for website, privacy, and terms.
+4. **Redirect URIs**: add the Notion callback above.
+5. Capabilities: **Read content** only (no insert/update), and no user
+   information beyond what's needed.
+6. Save, then copy the **OAuth client ID** and **OAuth client secret**.
+
+### Linear (OAuth application)
+
+1. In Linear: **Settings → API → OAuth applications → New OAuth application**.
+2. Name it Tembak, add the Linear callback above as the **Callback URL**, and
+   save. Leave it private to your workspace unless others need it.
+3. Copy the **Client ID** and **Client secret**. Tembak asks for the `read`
+   scope only. Linear access tokens expire after 24 hours; Tembak refreshes them
+   automatically with the refresh token.
+
+### Where the values go
+
+| Value | Where |
+|---|---|
+| `NOTION_OAUTH_CLIENT_ID`, `LINEAR_OAUTH_CLIENT_ID` | `deploy.env` (not secret) |
+| `NOTION_OAUTH_CLIENT_SECRET`, `LINEAR_OAUTH_CLIENT_SECRET` | Secret Manager, via the setup script |
+
+```bash
+NOTION_OAUTH_CLIENT_SECRET=... LINEAR_OAUTH_CLIENT_SECRET=... ./scripts/setup-gcp.sh
+./scripts/deploy.sh
+```
+
+Leave either one out to keep that provider on API keys only. Locally, put all
+four in `.env.local` if the provider accepts a `http://localhost:3000` redirect
+URI for your app; otherwise use the API-key fallback for local development.
+
+In the shared Demo workspace only its maintainers (`DEMO_OWNER_EMAILS`) can
+connect anything, so visitors never attach their own Notion or Linear there.
+
 ## Runtime settings and why
 
 | Flag | Why |
@@ -124,4 +183,6 @@ secrets from the last `deploy.sh` run and only swaps the image.
 | Agent replies with a model error | Model ID not available to your key; change `GEMINI_MODEL` / `GEMINI_FAST_MODEL` and redeploy |
 | Agent stays on the mock dashboard | `GEMINI_API_KEY` secret is still `unset`; run `GEMINI_API_KEY=... ./scripts/setup-gcp.sh` then redeploy |
 | Sheet won't connect | Share it with `tembak@PROJECT.iam.gserviceaccount.com` as Viewer, or set "Anyone with the link" |
+| Connect Notion/Linear shows "Couldn't finish connecting" | The redirect URI registered with the provider doesn't match `APP_URL` exactly, or the client secret is still `unset`. Check `gcloud run services logs read tembak` for the `[oauth]` line |
+| "Notion couldn't find that database" | In Notion, open the database, then ••• → Connections → add Tembak |
 | Logs | `gcloud run services logs tail tembak --region asia-southeast1` (needs `gcloud components install beta`), or Cloud Run > tembak > Logs |
