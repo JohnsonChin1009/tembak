@@ -13,6 +13,7 @@ import type {
   Profile,
   Skill,
   Source,
+  UnreadMentions,
   User,
   Workspace,
 } from "@/lib/types";
@@ -42,6 +43,8 @@ export class MemoryStore implements Store {
   private connections = new Map<string, Connection>();
   private skills = new Map<string, Skill>();
   private actions = new Map<string, ActionRecord>();
+  // Keyed by "<workspaceId>/<uid>".
+  private mentions = new Map<string, UnreadMentions>();
   private bus = new EventEmitter().setMaxListeners(0);
 
   async upsertUser(user: User) {
@@ -129,6 +132,7 @@ export class MemoryStore implements Store {
     for (const key of [...this.connections.keys()]) if (key.startsWith(prefix)) this.connections.delete(key);
     for (const key of [...this.skills.keys()]) if (key.startsWith(prefix)) this.skills.delete(key);
     for (const key of [...this.actions.keys()]) if (key.startsWith(prefix)) this.actions.delete(key);
+    for (const key of [...this.mentions.keys()]) if (key.startsWith(prefix)) this.mentions.delete(key);
     for (const uid of this.members.get(workspaceId)?.keys() ?? []) {
       const user = this.users.get(uid);
       if (!user) continue;
@@ -204,6 +208,20 @@ export class MemoryStore implements Store {
     return () => {
       this.bus.off(key, onMessage);
     };
+  }
+
+  async addMentions(workspaceId: string, channelId: string, uids: string[]) {
+    for (const uid of uids) {
+      const counts = this.mentions.get(k(workspaceId, uid)) ?? {};
+      this.mentions.set(k(workspaceId, uid), { ...counts, [channelId]: (counts[channelId] ?? 0) + 1 });
+    }
+  }
+  async getMentions(workspaceId: string, uid: string) {
+    return { ...this.mentions.get(k(workspaceId, uid)) };
+  }
+  async clearMentions(workspaceId: string, uid: string, channelId: string) {
+    const counts = this.mentions.get(k(workspaceId, uid));
+    if (counts) delete counts[channelId];
   }
 
   async listApps(workspaceId: string) {

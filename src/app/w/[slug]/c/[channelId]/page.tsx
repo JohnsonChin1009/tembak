@@ -16,7 +16,7 @@ export default async function ChannelPage({ params, searchParams }: PageProps<"/
   if (!m) notFound();
   const wid = m.workspace.id;
 
-  const [channels, apps, sources, joined, demo, me, members] = await Promise.all([
+  const [channels, apps, sources, joined, demo, me, members, mentions] = await Promise.all([
     store.listChannels(wid),
     store.listApps(wid),
     store.listSources(wid),
@@ -26,6 +26,7 @@ export default async function ChannelPage({ params, searchParams }: PageProps<"/
     store.getMember(wid, user.uid),
     // The open demo can have many members and has no checklist, so skip the list there.
     m.workspace.open ? Promise.resolve([]) : store.listMembers(wid),
+    store.getMentions(wid, user.uid),
     rememberWorkspace(user, m.workspace),
   ]);
   if (!channels.some((c) => c.id === channelId)) notFound();
@@ -46,6 +47,7 @@ export default async function ChannelPage({ params, searchParams }: PageProps<"/
       sources={sources.map(redact)}
       serviceAccountEmail={config().serviceAccountEmail}
       channelId={channelId}
+      mentions={mentions}
       appsUrl={config().appsUrl}
       agentMode={config().agentMode}
       initialOpen={appId ? { appId, version: v && v > 0 ? v : undefined } : null}

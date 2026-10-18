@@ -15,6 +15,7 @@ import type {
   Profile,
   Skill,
   Source,
+  UnreadMentions,
   User,
   Workspace,
 } from "@/lib/types";
@@ -222,6 +223,22 @@ export class FirestoreStore implements Store {
         },
         (err) => console.error("[store] message subscription failed", err),
       );
+  }
+
+  // One doc per member (workspaces/{wid}/mentions/{uid}), apart from the member doc so it never leaks to others.
+  async addMentions(workspaceId: string, channelId: string, uids: string[]) {
+    if (uids.length === 0) return;
+    const batch = this.db.batch();
+    for (const uid of uids) {
+      batch.set(this.ws(workspaceId).collection("mentions").doc(uid), { [channelId]: FieldValue.increment(1) }, { merge: true });
+    }
+    await batch.commit();
+  }
+  async getMentions(workspaceId: string, uid: string) {
+    return ((await this.ws(workspaceId).collection("mentions").doc(uid).get()).data() ?? {}) as UnreadMentions;
+  }
+  async clearMentions(workspaceId: string, uid: string, channelId: string) {
+    await this.ws(workspaceId).collection("mentions").doc(uid).set({ [channelId]: FieldValue.delete() }, { merge: true });
   }
 
   async listApps(workspaceId: string) {

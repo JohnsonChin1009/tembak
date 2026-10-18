@@ -119,6 +119,9 @@ export type Message = {
   thread?: ThreadSummary;
 };
 
+/** Per-member count of unread tags of them, by channel id. Thread replies count for their channel. */
+export type UnreadMentions = Record<string, number>;
+
 export type ThreadSummary = {
   count: number;
   lastAt: number;

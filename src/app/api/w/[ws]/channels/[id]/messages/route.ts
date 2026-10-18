@@ -3,7 +3,7 @@ import { z } from "zod";
 import { handle, HttpError, json, parseBody } from "@/lib/api";
 import { startAgentRun } from "@/lib/agent/run";
 import { randomId } from "@/lib/ids";
-import { mentionsAgent } from "@/lib/mentions";
+import { mentionsAgent, taggedUids } from "@/lib/mentions";
 import { getStore } from "@/lib/store";
 import type { Message } from "@/lib/types";
 import { requireMember } from "@/lib/workspaces";
@@ -58,6 +58,13 @@ export const POST = handle(async (req: Request, ctx: Ctx) => {
     threadId: body.threadId,
   };
   await store.addMessage(message);
+
+  // Tagged members see the channel marked in their sidebar. Tags of non-members are just text.
+  const tagged = taggedUids(message.text).filter((uid) => uid !== user.uid);
+  if (tagged.length) {
+    const members = await Promise.all(tagged.map((uid) => store.getMember(workspace.id, uid)));
+    await store.addMentions(workspace.id, channelId, tagged.filter((_, i) => members[i]));
+  }
 
   if (message.mentionsAgent) {
     after(() => startAgentRun(message));

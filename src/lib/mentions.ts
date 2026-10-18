@@ -9,3 +9,12 @@ export function mentionsAgent(text: string): boolean {
 export function stripMention(text: string): string {
   return text.replace(/(^|\s)@tembak\b[,:]?/gi, "$1").trim();
 }
+
+// Code spans and blocks stay literal, so tags inside them don't count (as in rich-text).
+const CODE_RE = /```[\s\S]*?```|`[^`\n]*`/g;
+
+/** Uids tagged as "<@uid>" in a message, once each. */
+export function taggedUids(text: string): string[] {
+  const uids = [...text.replace(CODE_RE, "").matchAll(/<@([A-Za-z0-9_-]+)>/g)].map((m) => m[1]);
+  return [...new Set(uids)];
+}

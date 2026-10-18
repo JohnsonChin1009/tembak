@@ -12,6 +12,7 @@ import type {
   Profile,
   Skill,
   Source,
+  UnreadMentions,
   User,
   Workspace,
 } from "@/lib/types";
@@ -71,6 +72,11 @@ export interface Store {
   listReplies(workspaceId: string, channelId: string, threadId: string): Promise<Message[]>;
   /** Like `subscribeMessages`, for one thread's replies. */
   subscribeReplies(workspaceId: string, channelId: string, threadId: string, listener: MessageListener): () => void;
+
+  /** Adds one unread tag in `channelId` for each uid. Pass only workspace members. */
+  addMentions(workspaceId: string, channelId: string, uids: string[]): Promise<void>;
+  getMentions(workspaceId: string, uid: string): Promise<UnreadMentions>;
+  clearMentions(workspaceId: string, uid: string, channelId: string): Promise<void>;
 
   listApps(workspaceId: string): Promise<App[]>;
   getApp(id: string): Promise<App | null>;

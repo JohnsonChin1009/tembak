@@ -10,9 +10,10 @@ import { Hint } from "@/components/onboarding/hint";
 import { OnboardingProvider, useOnboarding, type OnboardingInit } from "@/components/onboarding/onboarding-context";
 import { PeopleProvider, usePeople } from "@/components/people/people-context";
 import { PersonSheet } from "@/components/people/person-sheet";
-import type { App, Channel, Member, Source, User, WorkspaceInfo } from "@/lib/types";
+import type { App, Channel, Member, Source, UnreadMentions, User, WorkspaceInfo } from "@/lib/types";
 import { ChannelScope, type OpenApp } from "./channel-scope";
 import { Section, Sidebar } from "./sidebar";
+import { useMentions } from "./use-mentions";
 import { WorkspaceProvider } from "./workspace-context";
 import { InviteDialog, type WorkspaceLink } from "./workspace-menu";
 
@@ -26,6 +27,8 @@ type Props = {
   apps: App[];
   sources: Source[];
   channelId: string;
+  /** The signed-in member's unread tags, by channel. */
+  mentions: UnreadMentions;
   appsUrl: string;
   serviceAccountEmail?: string;
   agentMode: "mock" | "gemini";
@@ -57,6 +60,7 @@ function WorkspaceShell({
   apps: initialApps,
   sources: initialSources,
   channelId,
+  mentions: initialMentions,
   appsUrl,
   serviceAccountEmail,
   initialOpen,
@@ -72,6 +76,7 @@ function WorkspaceShell({
   const [navOpen, setNavOpen] = useState(false);
   const [openRequest, setOpenRequest] = useState<{ appId: string; nonce: number } | null>(null);
   const channel = channels.find((c) => c.id === channelId);
+  const mentions = useMentions(api, channelId, initialMentions);
 
   const refreshApps = useCallback(async () => {
     const res = await fetch(`${api}/apps`);
@@ -104,6 +109,7 @@ function WorkspaceShell({
           workspaces={workspaces}
           channels={channels}
           channelId={channelId}
+          mentions={mentions}
           onCreateChannel={createChannel}
         >
           <Section title="Apps">
