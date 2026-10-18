@@ -1,45 +1,61 @@
+import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
+import { signAppToken, signViewerCookie, VIEWER_COOKIE, VIEWER_COOKIE_TTL_MS, verifyViewerCookie, verifyViewerTicket } from "@/lib/app-token";
+import { appNotFound } from "@/lib/app-not-found";
+import { getSessionUser } from "@/lib/auth/session";
 import { config } from "@/lib/config";
+import { canUseWorkspaceApps } from "@/lib/runtime-auth";
 import { injectRuntime } from "@/lib/runtime";
 import { getStore } from "@/lib/store";
 
 // Opaque origin even at top level: published code can't use workspace cookies.
 const SANDBOX_CSP = "sandbox allow-scripts allow-forms allow-popups allow-modals allow-downloads";
 
-export async function GET(_req: Request, ctx: RouteContext<"/a/[slug]">) {
+// Published apps are for members of the app's workspace only. The apps host can't
+// see the session cookie, so signed-out visitors bounce through /view/:slug on the
+// workspace host, which checks membership and hands back a one-minute ticket.
+export async function GET(req: Request, ctx: RouteContext<"/a/[slug]">) {
   const { slug } = await ctx.params;
   const store = await getStore();
   const app = await store.getAppBySlug(slug);
   const n = app?.publishedVersion;
   const version = app && n ? await store.getVersion(app.id, n) : null;
-  if (!app || !version) return notFound();
+  if (!app || !version) return appNotFound();
 
-  const html = injectRuntime(version.html, { appId: app.id, version: version.n, apiBase: config().appsUrl });
+  const { appsUrl, appUrl, isProd } = config();
+  const cleanUrl = `${appsUrl}/a/${slug}`;
+
+  const ticket = verifyViewerTicket(new URL(req.url).searchParams.get("ticket"));
+  if (ticket && ticket.appId === app.id) {
+    const res = NextResponse.redirect(cleanUrl);
+    res.cookies.set(VIEWER_COOKIE, signViewerCookie({ uid: ticket.uid }), {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: isProd,
+      path: "/a/",
+      maxAge: VIEWER_COOKIE_TTL_MS / 1000,
+    });
+    return res;
+  }
+
+  const jar = await cookies();
+  // On a single host (local dev) the session cookie is visible here too.
+  const uid = verifyViewerCookie(jar.get(VIEWER_COOKIE)?.value)?.uid ?? (await getSessionUser())?.uid;
+  // Not signed in here, or signed in as someone else: let the workspace host decide.
+  if (!uid || !(await canUseWorkspaceApps(app.workspaceId, uid))) {
+    return NextResponse.redirect(`${appUrl}/view/${encodeURIComponent(slug)}`);
+  }
+
+  const token = signAppToken({ appId: app.id, workspaceId: app.workspaceId, uid });
+  const html = injectRuntime(version.html, { appId: app.id, version: version.n, apiBase: appsUrl, token });
   return new Response(html, {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "content-security-policy": SANDBOX_CSP,
-      "cache-control": "public, max-age=30",
+      // Carries a per-member token, so never shared caches.
+      "cache-control": "private, no-store",
       "x-robots-tag": "noindex",
       "referrer-policy": "no-referrer",
     },
-  });
-}
-
-function notFound() {
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Not found · Tembak</title>
-<style>
-  body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0b0c0e;color:#e9ebee;font-family:ui-sans-serif,system-ui,-apple-system,sans-serif}
-  .card{max-width:420px;padding:32px;text-align:center}
-  .mark{width:44px;height:44px;margin:0 auto 20px}
-  h1{font-size:22px;margin:0 0 8px;letter-spacing:-.01em}
-  p{color:#9ba1a8;line-height:1.55;margin:0}
-</style></head><body><div class="card">
-<svg class="mark" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#c6f432"/><path d="M9 23 L21 11 M14 11 H21 V18" stroke="#0b0c0e" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></svg>
-<h1>This app isn't live</h1>
-<p>It may have been unpublished, or the link is wrong. Ask whoever shared it to publish it again from Tembak.</p>
-</div></body></html>`;
-  return new Response(html, {
-    status: 404,
-    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
   });
 }

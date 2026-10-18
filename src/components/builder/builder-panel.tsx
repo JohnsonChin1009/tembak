@@ -21,6 +21,29 @@ async function fetchVersion(appId: string, n: number): Promise<AppVersion> {
   return v;
 }
 
+/** The member's runtime token for this app, refreshed a few minutes before it expires. */
+function useAppToken(appId: string): string | null {
+  const [token, setToken] = useState<{ appId: string; value: string } | null>(null);
+  useEffect(() => {
+    let live = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const load = () =>
+      fetch(`/api/apps/${appId}/token`, { method: "POST" })
+        .then((r) => (r.ok ? (r.json() as Promise<{ token: string; expiresAt: number }>) : null))
+        .then((d) => {
+          if (!live || !d) return;
+          setToken({ appId, value: d.token });
+          timer = setTimeout(load, Math.max(60_000, d.expiresAt - Date.now() - 5 * 60_000));
+        });
+    load();
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [appId]);
+  return token?.appId === appId ? token.value : null;
+}
+
 export function BuilderPanel({
   app,
   version,
@@ -69,10 +92,11 @@ export function BuilderPanel({
     };
   }, [app.id, app.latestVersion]);
 
-  const current = loaded?.appId === app.id && loaded.n === version ? loaded : null;
+  const token = useAppToken(app.id);
+  const current = loaded?.appId === app.id && loaded.n === version && token ? loaded : null;
   const srcDoc = useMemo(
-    () => (current ? injectRuntime(current.html, { appId: app.id, version, apiBase: appsUrl }) : ""),
-    [current, app.id, version, appsUrl],
+    () => (current && token ? injectRuntime(current.html, { appId: app.id, version, apiBase: appsUrl, token }) : ""),
+    [current, app.id, version, appsUrl, token],
   );
   const meta = versions.find((v) => v.n === version);
 

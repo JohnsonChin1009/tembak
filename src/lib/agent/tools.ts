@@ -116,7 +116,7 @@ export const TOOL_DECLARATIONS: FunctionDeclaration[] = [
   },
   {
     name: "publish_app",
-    description: "Publish an app's latest version to its public link. Only when someone explicitly asks.",
+    description: "Publish an app's latest version to its live link (members of this workspace only). Only when someone explicitly asks.",
     parametersJsonSchema: { type: "object", properties: { app_id: { type: "string" } }, required: ["app_id"] },
   },
 ];

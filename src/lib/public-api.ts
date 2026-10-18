@@ -1,11 +1,12 @@
 import "server-only";
 
 // Endpoints called from generated apps. Those run on an opaque origin (CSP
-// sandbox / sandboxed iframe), so they're cross-origin and never send cookies.
+// sandbox / sandboxed iframe), so they're cross-origin and never send cookies;
+// they authenticate with a bearer app token instead (src/lib/runtime-auth.ts).
 export const CORS_HEADERS = {
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "GET, PUT, OPTIONS",
-  "access-control-allow-headers": "content-type",
+  "access-control-allow-headers": "content-type, authorization",
   "access-control-max-age": "86400",
 };
 

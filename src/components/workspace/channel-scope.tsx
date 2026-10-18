@@ -224,7 +224,7 @@ export function ChannelScope({
                 show={!!onboarding?.hintSeen("builder") && !openApp.publishedVersion}
                 className="absolute top-16 right-4 z-10 max-w-xs"
               >
-                Publishing gives anyone a link. You can unpublish anytime.
+                Publishing gives your workspace a link. You can unpublish anytime.
               </Hint>
             </div>
           </div>
