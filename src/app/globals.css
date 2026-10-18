@@ -146,8 +146,30 @@ body {
   animation: tembak-pulse 1.4s 850ms ease-in-out infinite both;
 }
 
+/* Login chat demo: plays once. --d is each element's start time. */
+@keyframes tembak-chat-in {
+  from { opacity: 0; transform: translateY(8px); filter: blur(4px); }
+}
+@keyframes tembak-chat-out {
+  to { opacity: 0; filter: blur(4px); }
+}
+@keyframes tembak-bar-grow {
+  from { transform: scaleX(0); }
+}
+.chat-in {
+  animation: tembak-chat-in 480ms cubic-bezier(0.16, 1, 0.3, 1) var(--d, 0s) both;
+}
+.chat-building {
+  animation: tembak-chat-out 220ms ease-in 3.5s forwards;
+}
+.bar-grow {
+  transform-origin: left;
+  animation: tembak-bar-grow 700ms cubic-bezier(0.16, 1, 0.3, 1) var(--d, 0s) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .dot-pulse > span, .sheen, .sheet-in, .trajectory, .mark-in, .spark { animation: none; }
+  .dot-pulse > span, .sheen, .sheet-in, .trajectory, .mark-in, .spark, .chat-in, .bar-grow { animation: none; }
+  .chat-building { animation: none; visibility: hidden; }
 }
 
 /* Composer (Tiptap) */
