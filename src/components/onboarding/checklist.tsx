@@ -13,7 +13,7 @@ const STEPS: Record<OnboardingStep, { label: string; hint: string }> = {
   },
   preview: { label: "Open the preview", hint: "Click the app card Tembak posts. It opens next to the chat." },
   revise: { label: "Ask for a change", hint: "Type a change under the preview, like “make the bars orange”." },
-  publish: { label: "Publish it", hint: "Hit Publish to get a link anyone can open. You can unpublish anytime." },
+  publish: { label: "Publish it", hint: "Hit Publish to get a link your workspace can open. You can unpublish anytime." },
   invite: { label: "Invite a teammate", hint: "Tembak works best with your team." },
 };
 

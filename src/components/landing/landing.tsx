@@ -33,7 +33,7 @@ const STEPS = [
 const USE_CASES = [
   { icon: BarChart3, title: "Campaign dashboards", body: "Cost per sign-up by channel, straight from the team's Google Sheet." },
   { icon: ClipboardList, title: "Ops trackers", body: "Shift handovers, incident logs, stock counts. Entries are saved." },
-  { icon: Users, title: "Sign-up sheets", body: "Event RSVPs and volunteer rosters you can share with anyone." },
+  { icon: Users, title: "Sign-up sheets", body: "Event RSVPs and volunteer rosters your whole team can fill in." },
   { icon: Database, title: "API views", body: "Point it at a JSON API. Keys stay on the server, never in the app." },
 ];
 

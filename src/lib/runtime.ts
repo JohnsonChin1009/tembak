@@ -3,14 +3,17 @@
 
 import { UI_KIT_CSS, UI_KIT_JS } from "./ui-kit";
 
-export type RuntimeOptions = { appId: string; version: number; apiBase: string };
+/** `token` is the member's app token (src/lib/app-token.ts); without it data and kv calls get 401. */
+export type RuntimeOptions = { appId: string; version: number; apiBase: string; token?: string };
 
-export function runtimeScript({ appId, version, apiBase }: RuntimeOptions): string {
-  const cfg = JSON.stringify({ appId, version, api: apiBase.replace(/\/$/, "") }).replace(/</g, "\\u003c");
+export function runtimeScript({ appId, version, apiBase, token }: RuntimeOptions): string {
+  const cfg = JSON.stringify({ appId, version, api: apiBase.replace(/\/$/, ""), token: token ?? null }).replace(/</g, "\\u003c");
   return `<script>(function(){
 var C=${cfg};
 function req(path, init){
-  return fetch(C.api + path, Object.assign({ credentials: "omit" }, init)).then(function(r){
+  init = Object.assign({ credentials: "omit" }, init);
+  if (C.token) init.headers = Object.assign({ authorization: "Bearer " + C.token }, init.headers);
+  return fetch(C.api + path, init).then(function(r){
     if (!r.ok) return r.json().catch(function(){return {};}).then(function(b){ throw new Error(b.error || ("Request failed (" + r.status + ")")); });
     return r.status === 204 ? null : r.json();
   });
