@@ -40,15 +40,13 @@ seeded with demo data, persists across HMR via `globalThis`) and
 - versions: `addVersion`, `getVersion`, `listVersions`
 - sources: `listSources`, `getSource`, `upsertSource`, `deleteSource`
 
-Firestore layout (single workspace):
+Firestore layout: originally a single workspace; since PRD 08 everything except apps is
+nested under `workspaces/{wid}`. See [08-workspaces.md](08-workspaces.md#firestore-layout).
 
 ```
 users/{uid}
-channels/{channelId}
-channels/{channelId}/messages/{messageId}
-apps/{appId}
-apps/{appId}/versions/{n}
-sources/{sourceId}
+workspaces/{wid}  (+ members/, channels/{channelId}/messages/, sources/)
+apps/{appId}      (+ versions/{n}, kv/{key}; has workspaceId)
 ```
 
 ### Auth and session (`src/lib/auth/`)
@@ -64,7 +62,7 @@ sources/{sourceId}
 ### UI shell
 
 - `/login`: brand, one-line pitch, sign-in button.
-- `/` and `/c/[channelId]`: three-column app shell: sidebar | channel | builder panel (collapsible).
+- `/w/[slug]/c/[channelId]` (was `/c/[channelId]` before PRD 08): three-column app shell: sidebar | channel | builder panel (collapsible).
 - Design: dark-first neutral palette with one accent (electric lime `#c6f432`, which reads
   "shoot" or "go"), Geist Sans and Geist Mono, 8px spacing grid, subtle borders, no gradients-on-everything.
 

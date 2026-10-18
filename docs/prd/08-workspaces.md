@@ -115,8 +115,9 @@ existence).
 |---|---|---|
 | GET | `/api/workspaces` | Workspaces I belong to |
 | POST | `/api/workspaces` | `{name}` creates a workspace with me as owner and seeds `#general` |
-| GET | `/api/w/[ws]` | Workspace + my role + invite URL (owner only sees the token) |
+| GET | `/api/w/[ws]` | Workspace, my role, members, and the invite URL (any member can share it; open workspaces have none) |
 | POST | `/api/w/[ws]/invite` | Owner only: rotate the invite token, returns the new URL |
+| POST | `/api/w/[ws]/reset` | Demo owners only: clear the demo and restore the curated seed |
 | GET | `/api/w/[ws]/members` | Member list |
 | POST | `/api/join/[token]` | Join by invite; returns the workspace slug |
 | * | `/api/w/[ws]/channels…`, `/messages`, `/stream` | Moved from `/api/channels…` |
@@ -163,8 +164,8 @@ Public routes are unchanged.
 
 - Workspace name 1–40 chars; up to 10 workspaces created per user.
 - Invite tokens are unguessable (`crypto.randomBytes(18)` base64url) and compared exactly.
-- Roles: owner can rename, rotate the invite, and (stretch) remove members. Members can
-  do everything else, including publishing apps.
+- Roles: owner can rotate the invite (and, later, rename and remove members). Members can
+  do everything else, including sharing the invite link and publishing apps.
 - Firestore rules stay deny-all; all access goes through the server.
 - `ALLOWED_EMAIL_DOMAINS` still gates sign-in globally.
 
