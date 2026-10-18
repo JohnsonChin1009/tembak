@@ -40,7 +40,7 @@ async function generate(call: Call, extra: Record<string, unknown> = {}): Promis
     return text;
   } catch (err) {
     if (controller.signal.aborted) throw new Error(`Gemini timed out after ${call.timeoutMs / 1000}s`);
-    throw err;
+    throw friendlyError(err);
   } finally {
     clearTimeout(timer);
   }
@@ -56,4 +56,27 @@ export async function generateJson<T>(call: Call & { schema: object }): Promise<
 
 export function generateText(call: Call): Promise<string> {
   return generate(call);
+}
+
+/** Turns raw API errors (often a JSON blob) into one readable line. */
+function friendlyError(err: unknown): Error {
+  const raw = err instanceof Error ? err.message : String(err);
+  const status = (err as { status?: number }).status;
+  if (status === 402 || /prepayment|billing/i.test(raw)) {
+    return new Error("Gemini is out of credits for this API key. Top up in AI Studio or switch to a free-tier key.");
+  }
+  if (status === 429 || /RESOURCE_EXHAUSTED|quota/i.test(raw)) {
+    return new Error("Gemini rate limit hit. Wait a minute and try again.");
+  }
+  if (status === 404 || /not found|not supported/i.test(raw)) {
+    return new Error(`Gemini model not available to this key (${modelHint(raw)}).`);
+  }
+  if (status === 401 || status === 403 || /API key/i.test(raw)) {
+    return new Error("Gemini rejected the API key. Check the GEMINI_API_KEY secret.");
+  }
+  return err instanceof Error ? err : new Error(raw);
+}
+
+function modelHint(raw: string): string {
+  return raw.match(/models\/[\w.-]+/)?.[0] ?? "check GEMINI_MODEL";
 }
