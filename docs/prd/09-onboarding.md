@@ -112,3 +112,17 @@ the checklist, hints, empty states, and the join banner. It must not change
 7. A user joining by invite sees the join banner once.
 8. The Demo workspace is unchanged (no checklist, no getting-started channel).
 9. `pnpm typecheck`, `pnpm lint`, and `pnpm build` pass; desktop and 390px mobile have no horizontal scroll.
+
+## Implementation notes
+
+- The guided channel's example teammates are "Maya (example)" and "Sam (example)" rather than
+  "Tembak (example)", so it reads as a real team conversation that is clearly a sample.
+- The checklist shows in every channel of a team workspace until dismissed: expanded in
+  `#getting-started`, collapsed elsewhere (so people who join by invite see it in `#general`).
+- Hints show in every workspace, including the demo; the checklist and join banner don't.
+  Hints are sequenced so only one is on screen at a time: builder, then publish, then data.
+- "Invite a teammate" also counts as done once anyone else is a member.
+- The data empty state reuses the section's existing "Connect a sheet or API" button as its action.
+- Progress writes use a field-level merge (`steps.<id>`, `arrayUnion` for hints), so concurrent
+  updates from two tabs don't overwrite each other. Other members never see your progress
+  (it's stripped from `GET /api/w/[ws]`).

@@ -6,6 +6,11 @@ import { AppCard, AppChip } from "@/components/builder/app-card";
 import { BuilderPanel } from "@/components/builder/builder-panel";
 import { ChannelView } from "@/components/chat/channel-view";
 import { useChannel, type ChannelMessage } from "@/components/chat/use-channel";
+import { Checklist } from "@/components/onboarding/checklist";
+import { Hint } from "@/components/onboarding/hint";
+import { JoinBanner } from "@/components/onboarding/join-banner";
+import { useOnboarding } from "@/components/onboarding/onboarding-context";
+import { GETTING_STARTED_CHANNEL, GETTING_STARTED_PROMPT } from "@/lib/onboarding";
 import type { App, AppRef, Channel, Message, User } from "@/lib/types";
 import { usePanelWidth } from "./use-panel-width";
 import { useWorkspace } from "./workspace-context";
@@ -46,6 +51,7 @@ export function ChannelScope({
   renderPanelActions?: (app: App, version: number) => React.ReactNode;
 }) {
   const { base } = useWorkspace();
+  const onboarding = useOnboarding();
   const [open, setOpenState] = useState<OpenApp | null>(initialOpen);
   const [handledRequest, setHandledRequest] = useState(openRequest?.nonce);
   if (openRequest && openRequest.nonce !== handledRequest) {
@@ -54,6 +60,7 @@ export function ChannelScope({
     setOpenState({ appId: openRequest.appId });
   }
   const appsById = new Map(apps.map((a) => [a.id, a]));
+  const guided = channel.id === GETTING_STARTED_CHANNEL && !!onboarding?.checklist;
   const setOpen = setOpenState;
   useEffect(() => {
     setUrl(base, channel.id, open);
@@ -64,6 +71,7 @@ export function ChannelScope({
   // the latest values without resubscribing.
   const appsRef = useRef(appsById);
   const messagesRef = useRef<ChannelMessage[]>([]);
+  const recordRef = useRef(onboarding?.record);
   const onUpdate = useCallback(
     (m: Message, prev: Message | undefined) => {
       if (m.author.kind !== "agent" || m.status !== "done" || !m.appRef) return;
@@ -74,6 +82,8 @@ export function ChannelScope({
       const trigger = messagesRef.current.find((x) => x.id === m.replyTo);
       if (trigger?.author.kind === "user" && trigger.author.uid === user.uid) {
         setOpen({ appId: m.appRef.appId, version: m.appRef.version });
+        // A new version of an existing app means they asked for a change in chat.
+        if (m.appRef.version > 1) recordRef.current?.("revise");
       }
     },
     [onAppsStale, setOpen, user.uid],
@@ -82,6 +92,7 @@ export function ChannelScope({
   useEffect(() => {
     appsRef.current = appsById;
     messagesRef.current = messages;
+    recordRef.current = onboarding?.record;
   });
 
   const { width, containerRef, handleProps } = usePanelWidth();
@@ -89,6 +100,16 @@ export function ChannelScope({
   const openApp = open ? appsById.get(open.appId) : undefined;
   const openVersion = open && openApp ? (open.version ?? openApp.latestVersion) : 0;
   const building = openApp ? buildingLine(messages, openApp) : null;
+
+  const record = onboarding?.record;
+  useEffect(() => {
+    if (openApp) record?.("preview");
+  }, [openApp, record]);
+
+  function sendMessage(text: string, appRef?: AppRef) {
+    if (/(^|\s)@tembak\b/i.test(text)) record?.("mention");
+    return send(text, appRef);
+  }
 
   const renderAppRef = (ref: AppRef, message: ChannelMessage) => {
     const app = appsById.get(ref.appId);
@@ -119,8 +140,15 @@ export function ChannelScope({
           channel={channel}
           messages={messages}
           loaded={loaded}
-          send={(text) => send(text)}
+          send={(text) => sendMessage(text)}
           renderAppRef={renderAppRef}
+          starters={guided ? [GETTING_STARTED_PROMPT] : undefined}
+          top={
+            <>
+              <JoinBanner apps={apps} onOpenApp={(a) => setOpen({ appId: a.id })} />
+              <Checklist defaultOpen={guided} />
+            </>
+          }
         />
       </main>
 
@@ -137,6 +165,7 @@ export function ChannelScope({
             className="fixed inset-0 z-40 lg:static lg:z-auto lg:w-(--panel-w) lg:shrink-0"
             style={{ ["--panel-w" as string]: `${width}px` }}
           >
+            <div className="relative h-full">
               <BuilderPanel
                 app={openApp}
                 version={openVersion}
@@ -145,8 +174,22 @@ export function ChannelScope({
                 actions={renderPanelActions?.(openApp, openVersion)}
                 onSelectVersion={(n) => setOpen({ appId: openApp.id, version: n })}
                 onClose={() => setOpen(null)}
-                onRequestChanges={(text) => send(text, { appId: openApp.id, version: openVersion })}
+                onRequestChanges={(text) => {
+                  record?.("revise");
+                  return sendMessage(text, { appId: openApp.id, version: openVersion });
+                }}
               />
+              <Hint id="builder" className="absolute inset-x-4 bottom-32 z-10">
+                This is a live preview. Ask for changes below, or switch to Code.
+              </Hint>
+              <Hint
+                id="publish"
+                show={!!onboarding?.hintSeen("builder") && !openApp.publishedVersion}
+                className="absolute top-16 right-4 z-10 max-w-xs"
+              >
+                Publishing gives anyone a link. You can unpublish anytime.
+              </Hint>
+            </div>
           </div>
         </>
       ) : null}

@@ -8,6 +8,7 @@ import type {
   Channel,
   Member,
   Message,
+  OnboardingPatch,
   Source,
   User,
   Workspace,
@@ -80,6 +81,14 @@ export class FirestoreStore implements Store {
   async listMembers(workspaceId: string) {
     const snap = await this.ws(workspaceId).collection("members").orderBy("joinedAt").get();
     return snap.docs.map((d) => d.data() as Member);
+  }
+  async updateOnboarding(workspaceId: string, uid: string, patch: OnboardingPatch) {
+    // A merge set touches only the named fields, so concurrent step/hint writes don't clobber each other.
+    const onboarding: DocumentData = {};
+    if (patch.step) onboarding.steps = { [patch.step]: Date.now() };
+    if (patch.hint) onboarding.hints = FieldValue.arrayUnion(patch.hint);
+    if (patch.dismissed !== undefined) onboarding.dismissed = patch.dismissed;
+    await this.ws(workspaceId).collection("members").doc(uid).set({ onboarding }, { merge: true });
   }
   async listWorkspacesForUser(uid: string) {
     const ids = (await this.getUser(uid))?.workspaceIds ?? [];

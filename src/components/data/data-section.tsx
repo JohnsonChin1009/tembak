@@ -30,6 +30,9 @@ export function DataSection({
           </button>
         }
       >
+        {sources.length === 0 ? (
+          <p className="px-2 py-1 text-xs text-faint">Connect data so Tembak builds with your real numbers.</p>
+        ) : null}
         {sources.map((s) => {
           const Icon = ICONS[s.kind];
           return (

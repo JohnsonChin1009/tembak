@@ -9,11 +9,13 @@ export function PublishControls({
   version,
   appsUrl,
   onChanged,
+  onPublished,
 }: {
   app: App;
   version: number;
   appsUrl: string;
   onChanged: () => void;
+  onPublished?: () => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -33,7 +35,10 @@ export function PublishControls({
       });
       if (!res.ok) throw new Error(((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Failed");
       onChanged();
-      if (method === "POST") await copy();
+      if (method === "POST") {
+        onPublished?.();
+        await copy();
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed");
     } finally {

@@ -1,4 +1,5 @@
 import { SAMPLE_DATASETS } from "@/lib/data/samples";
+import { GETTING_STARTED_CHANNEL } from "@/lib/onboarding";
 import type { Channel, Message, Source, Workspace } from "@/lib/types";
 import { DEMO_WORKSPACE_ID, type Store } from "./types";
 
@@ -86,16 +87,63 @@ export async function seedDemoContent(store: Store): Promise<void> {
   }
 }
 
-/** A new team workspace starts with #general only. */
-export async function seedWorkspace(store: Store, workspaceId: string, createdBy: string): Promise<Channel> {
-  const general: Channel = {
+/**
+ * A new team workspace: #general with a welcome, #getting-started with a short
+ * example conversation that sets up the first build, and one sample data source.
+ */
+export async function seedWorkspace(store: Store, workspaceId: string, createdBy: string): Promise<void> {
+  const now = Date.now();
+  await store.createChannel({
     id: "general",
     workspaceId,
     name: "general",
     topic: "Talk it through, then tag @tembak",
-    createdAt: Date.now(),
+    createdAt: now - 2,
     createdBy,
-  };
-  await store.createChannel(general);
-  return general;
+  });
+  await store.createChannel({
+    id: GETTING_STARTED_CHANNEL,
+    workspaceId,
+    name: "getting-started",
+    topic: "Your first build, step by step",
+    createdAt: now - 1,
+    createdBy,
+  });
+
+  await store.addMessage({
+    id: `welcome-${workspaceId}`,
+    workspaceId,
+    channelId: "general",
+    createdAt: now - 60_000,
+    author: { kind: "agent" },
+    text:
+      "👋 Hi, I'm **Tembak**. Your team talks things through here, and when there's enough context, " +
+      "tag **@tembak** and I'll build the tool you need: a dashboard, a tracker, a form. You can publish it to a link in one click.\n\n" +
+      "Head to **#getting-started** for a one-minute first build. Tembak works best with your team, so bring them in:",
+    mentionsAgent: false,
+    status: "done",
+    action: "invite",
+  });
+
+  const maya = { kind: "user" as const, uid: "example-maya", name: "Maya (example)" };
+  const sam = { kind: "user" as const, uid: "example-sam", name: "Sam (example)" };
+  const convo: Array<[typeof maya, string]> = [
+    [maya, "Leadership keeps asking which ad channel gives us the cheapest sign-ups. Can we get that without another spreadsheet?"],
+    [sam, "The weekly numbers are already connected as “Sample: Q4 campaign”. Cost per sign-up by channel plus a trend line would cover it."],
+  ];
+  let t = now - 50_000;
+  for (const [author, text] of convo) {
+    t += 10_000;
+    await store.addMessage({
+      id: `example-${workspaceId}-${t}`,
+      workspaceId,
+      channelId: GETTING_STARTED_CHANNEL,
+      createdAt: t,
+      author,
+      text,
+      mentionsAgent: false,
+    });
+  }
+
+  await store.upsertSource({ ...sampleSource(workspaceId, "campaign", now), name: "Sample: Q4 campaign" });
 }

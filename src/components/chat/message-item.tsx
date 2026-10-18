@@ -1,10 +1,11 @@
 "use client";
 
 import clsx from "clsx";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, UserPlus } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Avatar } from "@/components/avatar";
+import { useOnboarding } from "@/components/onboarding/onboarding-context";
 import type { AppRef } from "@/lib/types";
 import { RichText } from "./rich-text";
 import type { ChannelMessage } from "./use-channel";
@@ -131,7 +132,21 @@ function AgentBody({
     <div className="space-y-2">
       {message.text ? <AgentMarkdown text={message.text} /> : null}
       {message.appRef && renderAppRef ? renderAppRef(message.appRef, message) : null}
+      {message.action === "invite" ? <InviteAction /> : null}
     </div>
+  );
+}
+
+function InviteAction() {
+  const onboarding = useOnboarding();
+  if (!onboarding) return null;
+  return (
+    <button
+      onClick={() => onboarding.setInviteOpen(true)}
+      className="inline-flex items-center gap-1.5 rounded-lg border border-accent/40 bg-accent-dim px-3 py-1.5 text-sm font-medium text-accent transition hover:bg-accent/20"
+    >
+      <UserPlus className="size-3.5" /> Invite people
+    </button>
   );
 }
 
