@@ -36,6 +36,11 @@ window.tembak = {
 window.tembak.post = function(text, opts){
   return rt("/post", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: String(text == null ? "" : text), thread: !!(opts && opts.thread) }) }).then(function(){});
 };
+// tembak.ask(prompt, { data?, json?, schema? }) -> string, or parsed JSON when json is true.
+window.tembak.ask = function(prompt, o){
+  o = o || {};
+  return rt("/ask", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt: prompt, data: o.data, json: !!o.json, schema: o.schema }) }).then(function(b){ return b.answer; });
+};
 })();</script><style>${UI_KIT_CSS}</style><script>${UI_KIT_JS}</script>`;
 }
 

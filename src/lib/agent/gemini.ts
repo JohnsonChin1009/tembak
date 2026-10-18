@@ -19,6 +19,10 @@ type Call = {
   prompt: string;
   timeoutMs: number;
   temperature?: number;
+  maxOutputTokens?: number;
+  /** Ask for a JSON reply (responseMimeType application/json), optionally shaped by a JSON Schema. */
+  json?: boolean;
+  schema?: unknown;
 };
 
 const RETRY_AFTER_MS = 5_000;
@@ -54,7 +58,13 @@ export function generateText(call: Call): Promise<string> {
     const res = await genai().models.generateContent({
       model: call.model,
       contents: [{ role: "user", parts: [{ text: call.prompt }] }],
-      config: { systemInstruction: call.system, temperature: call.temperature, abortSignal },
+      config: {
+        systemInstruction: call.system,
+        temperature: call.temperature,
+        maxOutputTokens: call.maxOutputTokens,
+        ...(call.json ? { responseMimeType: "application/json", responseJsonSchema: call.schema } : {}),
+        abortSignal,
+      },
     });
     const text = res.text;
     if (!text) throw new Error("Gemini returned an empty response");
