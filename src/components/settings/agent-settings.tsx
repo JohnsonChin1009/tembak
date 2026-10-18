@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import clsx from "clsx";
-import { BookOpen, Check, LoaderCircle, Pencil, Plus, Trash2, X } from "lucide-react";
-import { Modal } from "@/components/data/data-dialog";
+import { BookOpen, Check, LoaderCircle, Pencil, Plus, Trash2 } from "lucide-react";
+import { ErrorNote } from "@/components/data/connector-panel";
+import { useWorkspace } from "@/components/workspace/workspace-context";
 import type { Skill } from "@/lib/types";
-import { useWorkspace } from "./workspace-context";
+import { SettingsHeader } from "./settings-shell";
 
 type Settings = {
   rules: string;
@@ -19,7 +20,7 @@ type Draft = { id?: string; name: string; description: string; body: string };
 const MAX_RULES = 2000;
 
 /** Team rules and skills for @tembak in this workspace. */
-export function AgentSettingsDialog({ onClose }: { onClose: () => void }) {
+export function AgentSettings() {
   const { api } = useWorkspace();
   const [data, setData] = useState<Settings | null>(null);
   const [rules, setRules] = useState("");
@@ -84,21 +85,13 @@ export function AgentSettingsDialog({ onClose }: { onClose: () => void }) {
   const overridden = new Set(data?.skills.map((s) => s.name));
 
   return (
-    <Modal onClose={onClose} wide>
-      <div className="flex items-center justify-between border-b border-line px-5 py-4">
-        <div>
-          <h2 className="font-semibold">Agent settings</h2>
-          <p className="mt-0.5 text-xs text-muted">How @tembak works in this workspace. Applies to everyone here.</p>
-        </div>
-        <button onClick={onClose} className="rounded-md p-1.5 text-faint hover:bg-hover hover:text-fg" aria-label="Close">
-          <X className="size-4" />
-        </button>
-      </div>
+    <>
+      <SettingsHeader title="Agent" description="How @tembak works in this workspace. Applies to everyone here." />
 
       {!data ? (
-        <div className="p-8">{error ? <ErrorNote>{error}</ErrorNote> : <LoaderCircle className="mx-auto size-5 animate-spin text-faint" />}</div>
+        <div className="py-8">{error ? <ErrorNote>{error}</ErrorNote> : <LoaderCircle className="mx-auto size-5 animate-spin text-faint" />}</div>
       ) : (
-        <div className="space-y-6 p-5">
+        <div className="space-y-8">
           {!editable ? (
             <p className="rounded-lg border border-line bg-bg px-3 py-2 text-xs text-muted">
               Only the demo&apos;s maintainers can change these. Create your own workspace to set your own rules.
@@ -239,14 +232,6 @@ export function AgentSettingsDialog({ onClose }: { onClose: () => void }) {
           {error ? <ErrorNote>{error}</ErrorNote> : null}
         </div>
       )}
-    </Modal>
-  );
-}
-
-function ErrorNote({ children }: { children: React.ReactNode }) {
-  return (
-    <p role="alert" className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
-      {children}
-    </p>
+    </>
   );
 }

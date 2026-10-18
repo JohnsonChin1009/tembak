@@ -36,7 +36,7 @@ export async function GET(req: Request, ctx: RouteContext<"/api/oauth/[provider]
 
   const back = (query: string) => {
     const res = NextResponse.redirect(
-      `${config().appUrl}/w/${encodeURIComponent(m.workspace.slug)}${state.c ? `/c/${state.c}` : ""}?${query}`,
+      `${config().appUrl}/w/${encodeURIComponent(m.workspace.slug)}${state.s ? "/settings/connectors" : state.c ? `/c/${state.c}` : ""}?${query}`,
       302,
     );
     // Single use: the nonce is spent whatever the outcome.

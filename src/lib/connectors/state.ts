@@ -22,6 +22,8 @@ export type OAuthState = {
   x: number;
   /** Channel to return to */
   c?: string;
+  /** Return to the settings page instead of a channel */
+  s?: 1;
 };
 
 let cachedKey: Buffer | undefined;
