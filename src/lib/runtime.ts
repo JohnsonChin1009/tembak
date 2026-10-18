@@ -33,6 +33,9 @@ window.tembak = {
   me: once(function(){ return rt("/me"); }),
   members: (function(){ var all = once(function(){ return rt("/members"); }); return function(){ return all().then(function(l){ return l.slice(); }); }; })()
 };
+window.tembak.post = function(text, opts){
+  return rt("/post", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: String(text == null ? "" : text), thread: !!(opts && opts.thread) }) }).then(function(){});
+};
 })();</script><style>${UI_KIT_CSS}</style><script>${UI_KIT_JS}</script>`;
 }
 

@@ -15,7 +15,8 @@ export const BUILTIN_SKILLS: SkillDef[] = [
     body: `Layout: header (title, one-line description, a category filter via ui.select, an "Export CSV" button via ui.download), then ui.kpis with 3-4 tiles, then a .tk-cols-3 row with a line chart (span 2) and an hbar breakdown, then a .tk-card with ui.table.
 Metrics: put the number the team asked about first. Ratios (cost per X = spend / X) are computed from sums, never averaged per row. Use format "currency" for money and "percent" for 0..1 ratios.
 Trend: ui.chart type "line", x = the date column, bucket "week" if there are more than ~45 distinct dates, series = the main category only if it has <= 6 values.
-Filter: re-render everything from the filtered rows on change.`,
+Filter: re-render everything from the filtered rows on change.
+Share to channel: add a "Share to channel" button in the header that tembak.post()s a 2-3 line summary of what's on screen (the filter in use and the headline KPIs).`,
   },
   {
     name: "tracker",
@@ -43,7 +44,8 @@ Layout: header with an add-card ui.form (title, column select, owner field of ty
     name: "report",
     description: "Printable one-page summary with headline numbers and a short narrative",
     body: `Layout: a single .tk-page with max-width 820px. Header with title, date range, and a "Print" button (window.print()). ui.kpis for 3-4 headline numbers, then 2 small charts, then a "Highlights" list written from the data (top movers, best/worst category), then a compact table.
-Add @media print CSS: hide buttons, remove card shadows, avoid page breaks inside cards.`,
+Add @media print CSS: hide buttons, remove card shadows, avoid page breaks inside cards.
+Share to channel: add a "Share to channel" button next to Print that tembak.post()s a 2-3 line summary (date range, the headline numbers, the top highlight).`,
   },
   {
     name: "linear-sprint-board",

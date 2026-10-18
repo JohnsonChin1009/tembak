@@ -4,7 +4,7 @@ const MAX_REPLIERS = 3;
 
 /** The parent's thread summary after one more reply. */
 export function nextThread(thread: ThreadSummary | undefined, reply: Message): ThreadSummary {
-  const uid = reply.author.kind === "user" ? reply.author.uid : "agent";
+  const uid = reply.author.kind === "agent" ? "agent" : reply.author.uid;
   return {
     count: (thread?.count ?? 0) + 1,
     lastAt: reply.createdAt,

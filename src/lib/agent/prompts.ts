@@ -60,7 +60,8 @@ const RUNTIME_DOC = `DATA RUNTIME (window.tembak, already defined; don't define 
 - Only signed-in teammates in this workspace can open the app, so there's always a person using it.
 - await tembak.me() -> { uid, name, photoUrl?, title? }: the teammate using the app (e.g. "created by", "assigned to me" filters, a greeting).
 - await tembak.members() -> [{ uid, name, photoUrl?, title? }]: everyone in the workspace (owner pickers, avatars).
-- me() and members() can reject like any request: catch and carry on. Never block the whole app on them.`;
+- me() and members() can reject like any request: catch and carry on. Never block the whole app on them.
+- await tembak.post(text, { thread?: true }): posts a short message (1-1000 chars, simple markdown) to the app's channel, shown as from the app "via" the teammate. Only for meaningful events (a decision, a submitted approval, a summary the user chose to share), and only from an explicit user action like a "Share to channel" button: never on load, on a timer, or on every change. thread: true replies under the message that introduced the app. Disable the button while posting, then confirm with its label (e.g. "Shared ✓"); catch errors (e.g. too many posts) and show the message near the button.`;
 
 export const BUILD_SYSTEM = `You are Tembak's app builder. You write ONE complete, self-contained HTML file for a small web app used by a non-technical team. It must work the moment it loads.
 

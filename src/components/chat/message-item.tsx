@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import clsx from "clsx";
-import { AlertTriangle, ChevronRight, Copy, MessageSquareText, UserPlus } from "lucide-react";
+import { AlertTriangle, AppWindow, ChevronRight, Copy, MessageSquareText, UserPlus } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Avatar } from "@/components/avatar";
@@ -37,9 +37,10 @@ export function MessageItem({
 }) {
   const isAgent = message.author.kind === "agent";
   const author = message.author.kind === "user" ? message.author : null;
+  const app = message.author.kind === "app" ? message.author : null;
   // Live profile when known; old messages otherwise keep the name they were sent with.
-  const person = usePerson(author ?? { uid: "agent", name: "Tembak" });
-  const name = isAgent ? "Tembak" : person.name;
+  const person = usePerson(author ?? (app ? { uid: app.uid, name: app.name } : { uid: "agent", name: "Tembak" }));
+  const name = isAgent ? "Tembak" : app ? app.appTitle : person.name;
   const time = timeFmt.format(message.createdAt);
   const canReply = !!onOpenThread && !message.pending && !message.failed;
   const people = usePeople();
@@ -94,6 +95,10 @@ export function MessageItem({
           <PersonTrigger person={author} className="block">
             <Avatar name={name} seed={author.uid} photoUrl={person.photoUrl} className="size-9" />
           </PersonTrigger>
+        ) : app ? (
+          <span className="flex size-9 items-center justify-center rounded-lg border border-line bg-panel" aria-hidden>
+            <AppWindow className="size-4 text-accent" />
+          </span>
         ) : (
           <Avatar agent className="size-9" />
         )}
@@ -113,13 +118,27 @@ export function MessageItem({
                 agent
               </span>
             ) : null}
+            {app ? (
+              <span className="text-xs text-muted">
+                app · via{" "}
+                <PersonTrigger person={{ uid: app.uid, name: app.name }}>
+                  <span className="hover:underline">{person.name}</span>
+                </PersonTrigger>
+              </span>
+            ) : null}
             <time dateTime={new Date(message.createdAt).toISOString()} className="text-xs text-faint">
               {time}
             </time>
           </div>
         ) : null}
 
-        {isAgent ? <AgentBody message={message} renderAppRef={renderAppRef} /> : <UserBody message={message} renderAppRef={renderAppRef} />}
+        {isAgent ? (
+          <AgentBody message={message} renderAppRef={renderAppRef} />
+        ) : app ? (
+          <AppBody message={message} renderAppRef={renderAppRef} />
+        ) : (
+          <UserBody message={message} renderAppRef={renderAppRef} />
+        )}
 
         {message.failed ? (
           <p className="mt-1 flex items-center gap-1 text-xs text-danger">
@@ -205,6 +224,22 @@ function UserBody({
         <div className="mb-1">{renderAppRef(message.appRef, message)}</div>
       ) : null}
       <RichText text={message.text} />
+    </div>
+  );
+}
+
+/** A post from an app (tembak.post): the text, then a link back to the app. */
+function AppBody({
+  message,
+  renderAppRef,
+}: {
+  message: ChannelMessage;
+  renderAppRef?: (ref: AppRef, message: ChannelMessage) => React.ReactNode;
+}) {
+  return (
+    <div className="text-fg/90">
+      <RichText text={message.text} />
+      {message.appRef && renderAppRef ? <div className="mt-1">{renderAppRef(message.appRef, message)}</div> : null}
     </div>
   );
 }
