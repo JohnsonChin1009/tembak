@@ -64,7 +64,7 @@ export function WorkspaceMenu({ workspaces }: { workspaces: WorkspaceLink[] }) {
         <div role="menu" className="absolute inset-x-0 top-full z-30 mt-1 rounded-lg border border-line-strong bg-raised p-1 shadow-xl shadow-black/50">
           <p className={heading}>Your workspaces</p>
           {own.map(link)}
-          <Link href="/new" className={item} onClick={() => setOpen(false)}>
+          <Link href={`/new?back=/w/${workspace.slug}`} className={item} onClick={() => setOpen(false)}>
             <Plus className="size-3.5" /> Create workspace
           </Link>
           {demos.length ? (
