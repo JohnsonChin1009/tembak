@@ -46,7 +46,8 @@ export const UI_KIT_DOC = `UI KIT (window.tembak.ui, already loaded with its sty
 - ui.chart(el, { type: "line"|"area"|"bar"|"hbar"|"donut", data: rows, x: col|fn, y: col|[cols], series?: col, agg?: "sum"|"avg"|"count"|"min"|"max", bucket?: "week"|"month", sort?: "x"|"value"|"none", limit?, format?, height? }) -> { update(opts) }. It groups and aggregates rows itself. hbar is best for category breakdowns, line for trends, donut for share of total (<= 6 slices).
 - ui.table(el, rows, { columns?: [col | { key, label?, format?, render?(value,row)->Node|string, align? }], search?, sortable?, pageSize?, sort?: col, desc?, onRowClick?, actions?: Node, empty? }) -> { update(rows) }
 - ui.select(el, { label?, options, value?, all?: true|"All teams", onChange(value) }); ui.segmented(el, { options, value, onChange })
-- ui.form(el, { fields: [{ name, label?, type?: "text"|"number"|"date"|"email"|"select"|"textarea"|"checkbox", options?, required?, placeholder?, wide? }], submitLabel?, onSubmit(values) }) -> { values(), set(v), reset() }
+- ui.form(el, { fields: [{ name, label?, type?: "text"|"number"|"date"|"email"|"select"|"textarea"|"checkbox"|"member", options?, required?, placeholder?, wide? }], submitLabel?, onSubmit(values) }) -> { values(), set(v), reset() }. "member" is a teammate picker (value = their name): use it for owner/assignee fields.
+- ui.avatar(el | null, person, { size?, name?: true }) -> Node: photo or initials for a person from tembak.me()/members() (pass null to get the node, e.g. in a table render)
 - ui.tabs(el, [{ label, render(panel) }]); ui.loading(el, text?); ui.error(el, err); ui.empty(el, text?)
 - ui.collection(key) -> { all(), add(item), update(id, patch), remove(id), replace(items) }: a shared list saved with tembak.kv (items get id and created_at)
 - ui.group(rows, by, metrics[], op) -> [{ [by], count, ...metrics }]; ui.sum(rows, col); ui.avg(rows, col); ui.uniq(rows, col); ui.week(date); ui.month(date)
@@ -55,7 +56,11 @@ export const UI_KIT_DOC = `UI KIT (window.tembak.ui, already loaded with its sty
 
 const RUNTIME_DOC = `DATA RUNTIME (window.tembak, already defined; don't define it yourself)
 - await tembak.data("<sourceKey>") -> rows (array of objects; numbers are numbers). It can reject: show ui.error.
-- await tembak.kv.get(key) / tembak.kv.set(key, value): small JSON values shared by everyone who opens the app (prefer ui.collection for lists).`;
+- await tembak.kv.get(key) / tembak.kv.set(key, value): small JSON values shared by everyone who opens the app (prefer ui.collection for lists).
+- Only signed-in teammates in this workspace can open the app, so there's always a person using it.
+- await tembak.me() -> { uid, name, photoUrl?, title? }: the teammate using the app (e.g. "created by", "assigned to me" filters, a greeting).
+- await tembak.members() -> [{ uid, name, photoUrl?, title? }]: everyone in the workspace (owner pickers, avatars).
+- me() and members() can reject like any request: catch and carry on. Never block the whole app on them.`;
 
 export const BUILD_SYSTEM = `You are Tembak's app builder. You write ONE complete, self-contained HTML file for a small web app used by a non-technical team. It must work the moment it loads.
 
@@ -71,7 +76,7 @@ ${RUNTIME_DOC}
 RULES
 - No external scripts, stylesheets, or fonts: everything you need is in the kit. Plain JavaScript in one <script> at the end of <body>; no frameworks, no imports.
 - Keep it short: use the kit for KPIs, charts, tables, forms, and states. A typical dashboard is under 120 lines.
-- Sandbox: no cookies, localStorage may throw, no alert/confirm/prompt, no network calls except tembak.data and tembak.kv.
+- Sandbox: no cookies, localStorage may throw, no alert/confirm/prompt, no network calls except through window.tembak.
 - Data: if the brief names source keys, load them with tembak.data(key) and use the real column names exactly. Compute ratios from sums (cost per sign-up = sum(spend) / sum(signups)), guard divide-by-zero. If there's no source, embed realistic sample data (15-60 rows) in a const and show a <span class="tk-badge">Sample data</span> next to the title.
 - Always handle loading (ui.loading), empty, and error (ui.error) states.
 - Design: the most important numbers first, then charts, then detail. One accent color (ui.theme). Responsive down to 390px. No lorem ipsum, no TODOs, no buttons that do nothing.`;

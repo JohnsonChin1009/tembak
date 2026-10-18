@@ -19,6 +19,9 @@ function req(path, init){
   });
 }
 var enc = encodeURIComponent;
+// Identity-aware endpoints (src/app/api/runtime/[appId]/*).
+function rt(path, init){ return req("/api/runtime/" + enc(C.appId) + path, init); }
+function once(fn){ var p = null; return function(){ return p || (p = fn().catch(function(e){ p = null; throw e; })); }; }
 window.tembak = {
   appId: C.appId,
   version: C.version,
@@ -26,7 +29,9 @@ window.tembak = {
   kv: {
     get: function(key){ return req("/api/public/kv/" + enc(C.appId) + "/" + enc(key)).then(function(b){ return b ? b.value : null; }); },
     set: function(key, value){ return req("/api/public/kv/" + enc(C.appId) + "/" + enc(key), { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ value: value }) }).then(function(){}); }
-  }
+  },
+  me: once(function(){ return rt("/me"); }),
+  members: (function(){ var all = once(function(){ return rt("/members"); }); return function(){ return all().then(function(l){ return l.slice(); }); }; })()
 };
 })();</script><style>${UI_KIT_CSS}</style><script>${UI_KIT_JS}</script>`;
 }

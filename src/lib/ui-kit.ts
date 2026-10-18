@@ -78,6 +78,9 @@ table.tk-table{width:100%;border-collapse:collapse;font-size:13px}
 .tk-spin{display:inline-block;width:16px;height:16px;border:2px solid var(--tk-border);border-top-color:var(--tk-accent);border-radius:50%;animation:tk-spin .7s linear infinite;vertical-align:-3px;margin-right:8px}
 @keyframes tk-spin{to{transform:rotate(360deg)}}
 .tk-foot{margin-top:28px;text-align:center;font-size:12px;color:var(--tk-faint)}
+.tk-avatar{position:relative;display:inline-grid;place-items:center;flex:none;border-radius:50%;overflow:hidden;background:color-mix(in srgb,var(--tk-accent) 16%,var(--tk-card));color:var(--tk-accent);font-weight:650;line-height:1}
+.tk-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.tk-person{display:inline-flex;align-items:center;gap:8px;vertical-align:middle}
 `;
 
 export const UI_KIT_JS = `(function(){
@@ -182,6 +185,18 @@ function theme(opts){
 function loading(el, text){ clear(el).appendChild(h("div", { class: "tk-state" }, h("span", { class: "tk-spin" }), text || "Loading…")); }
 function error(el, err){ clear(el).appendChild(h("div", { class: "tk-state tk-error" }, "Couldn't load this: " + (err && err.message ? err.message : String(err || "unknown error")))); }
 function empty(el, text){ clear(el).appendChild(h("div", { class: "tk-state" }, text || "Nothing here yet.")); }
+// A person from tembak.me()/members(): photo, or initials when there's none or it fails.
+// Pass el = null to just get the node (e.g. from a table render function).
+function avatar(el, person, o){
+  o = o || {}; person = person || {};
+  var size = o.size || 28, name = String(person.name || "?");
+  var initials = name.trim().split(/\\s+/).slice(0, 2).map(function(w){ return w.charAt(0).toUpperCase(); }).join("") || "?";
+  var pic = h("span", { class: "tk-avatar", title: name, style: { width: size + "px", height: size + "px", fontSize: Math.round(size * 0.4) + "px" } }, initials);
+  if (person.photoUrl) { var img = h("img", { src: person.photoUrl, alt: "", referrerPolicy: "no-referrer", onerror: function(){ img.remove(); } }); pic.appendChild(img); }
+  var node = o.name ? h("span", { class: "tk-person" }, pic, h("span", null, name)) : pic;
+  if (el) clear(el).appendChild(node);
+  return node;
+}
 
 // ---- KPI tiles -----------------------------------------------------------------
 function kpis(el, items){
@@ -409,6 +424,24 @@ function segmented(el, o){
   el.appendChild(wrap);
   return wrap;
 }
+// Selects keep values that aren't (yet) among their options, e.g. a member picked before the list loads.
+function setSelect(sel, v){
+  v = v == null ? "" : String(v);
+  if (v && !Array.prototype.some.call(sel.options, function(x){ return x.value === v; })) sel.appendChild(h("option", { value: v }, v));
+  sel.value = v;
+}
+// "member" field: a select of workspace members (value = their name). Without the
+// runtime there's no member list, so it's a plain text input there.
+function memberInput(fd){
+  if (!T.members) return h("input", { class: "tk-input", type: "text", name: fd.name, placeholder: fd.placeholder || "Name", required: !!fd.required });
+  var sel = h("select", { class: "tk-select", name: fd.name, required: !!fd.required }, h("option", { value: "" }, fd.required ? "Choose…" : ""));
+  T.members().then(function(list){
+    var cur = sel.value;
+    list.forEach(function(m){ if (!Array.prototype.some.call(sel.options, function(x){ return x.value === m.name; })) sel.appendChild(h("option", { value: m.name }, m.name)); });
+    sel.value = cur;
+  }).catch(function(err){ console.error(err); });
+  return sel;
+}
 function form(el, o){
   el = clear(el);
   var f = h("form", { class: "tk-form", novalidate: false });
@@ -418,8 +451,9 @@ function form(el, o){
     if (t === "select") input = h("select", { class: "tk-select", name: fd.name, required: !!fd.required }, fd.required ? null : h("option", { value: "" }, ""), opts(fd.options).map(function(x){ return h("option", { value: x.value }, x.label); }));
     else if (t === "textarea") input = h("textarea", { class: "tk-textarea", name: fd.name, placeholder: fd.placeholder || "", required: !!fd.required });
     else if (t === "checkbox") input = h("input", { type: "checkbox", name: fd.name });
+    else if (t === "member") input = memberInput(fd);
     else input = h("input", { class: "tk-input", type: t, name: fd.name, placeholder: fd.placeholder || "", required: !!fd.required, step: t === "number" ? (fd.step || "any") : null, min: fd.min, max: fd.max });
-    if (fd.value != null) { if (t === "checkbox") input.checked = !!fd.value; else input.value = fd.value; }
+    if (fd.value != null) { if (t === "checkbox") input.checked = !!fd.value; else if (t === "member" && input.tagName === "SELECT") setSelect(input, fd.value); else input.value = fd.value; }
     inputs[fd.name] = { el: input, type: t };
     f.appendChild(t === "checkbox" ? h("label", { class: "tk-check" + (fd.wide ? " tk-wide" : "") }, input, fd.label || format.label(fd.name)) : h("label", { class: "tk-field" + (fd.wide || t === "textarea" ? " tk-wide" : "") }, fd.label || format.label(fd.name), input));
   });
@@ -432,7 +466,7 @@ function form(el, o){
     Promise.resolve(o.onSubmit && o.onSubmit(values())).then(function(keep){ if (keep !== false) f.reset(); }).catch(function(err){ console.error(err); }).then(function(){ btn.disabled = false; });
   });
   el.appendChild(f);
-  return { el: f, values: values, reset: function(){ f.reset(); }, set: function(v){ Object.keys(v).forEach(function(k){ if (inputs[k]) { if (inputs[k].type === "checkbox") inputs[k].el.checked = !!v[k]; else inputs[k].el.value = v[k] == null ? "" : v[k]; } }); } };
+  return { el: f, values: values, reset: function(){ f.reset(); }, set: function(v){ Object.keys(v).forEach(function(k){ if (inputs[k]) { if (inputs[k].type === "checkbox") inputs[k].el.checked = !!v[k]; else if (inputs[k].type === "member" && inputs[k].el.tagName === "SELECT") setSelect(inputs[k].el, v[k]); else inputs[k].el.value = v[k] == null ? "" : v[k]; } }); } };
 }
 function tabs(el, list){
   el = clear(el);
@@ -471,5 +505,5 @@ function download(filename, rows){
   doc.body.appendChild(a); a.click(); a.remove();
 }
 
-T.ui = { h: h, clear: clear, theme: theme, format: format, kpis: kpis, chart: chart, table: table, select: select, segmented: segmented, form: form, tabs: tabs, loading: loading, error: error, empty: empty, collection: collection, download: download, sum: sum, avg: avg, group: group, uniq: uniq, week: byWeek, month: byMonth };
+T.ui = { h: h, clear: clear, theme: theme, format: format, kpis: kpis, chart: chart, table: table, select: select, segmented: segmented, form: form, avatar: avatar, tabs: tabs, loading: loading, error: error, empty: empty, collection: collection, download: download, sum: sum, avg: avg, group: group, uniq: uniq, week: byWeek, month: byMonth };
 })();`;

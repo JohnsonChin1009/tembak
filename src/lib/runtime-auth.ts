@@ -1,7 +1,10 @@
 import "server-only";
+import { HttpError } from "@/lib/api";
 import { verifyAppToken } from "@/lib/app-token";
+import { applyProfile } from "@/lib/profile";
+import { publicError } from "@/lib/public-api";
 import { getStore } from "@/lib/store";
-import type { App } from "@/lib/types";
+import type { App, Member, User } from "@/lib/types";
 
 export class RuntimeAuthError extends Error {
   constructor(
@@ -34,4 +37,41 @@ export async function requireRuntimeCaller(req: Request, appId: string): Promise
     throw new RuntimeAuthError(403, "You're no longer a member of this workspace.");
   }
   return { app, workspaceId: app.workspaceId, uid: claims.uid };
+}
+
+/** What apps may know about a person. Never the email. */
+export type RuntimePerson = { uid: string; name: string; photoUrl?: string; title?: string };
+
+export function runtimePerson(p: Pick<Member | User, "uid" | "name" | "photoUrl" | "title">): RuntimePerson {
+  // Uploaded pictures are same-origin, cookie-auth URLs the sandboxed app can't load.
+  const photoUrl = p.photoUrl && /^https:\/\//i.test(p.photoUrl) ? p.photoUrl : undefined;
+  return { uid: p.uid, name: p.name, photoUrl, title: p.title || undefined };
+}
+
+/**
+ * The caller as a person: their membership, or their own profile when an open
+ * workspace (the demo) let them in without joining.
+ */
+export async function callerPerson({ workspaceId, uid }: RuntimeCaller): Promise<RuntimePerson> {
+  const store = await getStore();
+  const member = await store.getMember(workspaceId, uid);
+  if (member) return runtimePerson(member);
+  const user = await store.getUser(uid);
+  return runtimePerson(user ? applyProfile(user, user.profile) : { uid, name: "Teammate" });
+}
+
+/**
+ * Wraps a /api/runtime/* handler: RuntimeAuthError and HttpError (e.g. from
+ * parseBody) become CORS-enabled JSON errors the runtime turns into rejections.
+ */
+export function handleRuntime<A extends unknown[]>(fn: (...args: A) => Promise<Response>) {
+  return async (...args: A): Promise<Response> => {
+    try {
+      return await fn(...args);
+    } catch (err) {
+      if (err instanceof RuntimeAuthError || err instanceof HttpError) return publicError(err.status, err.message);
+      console.error("[runtime] unhandled error", err);
+      return publicError(500, "Something went wrong");
+    }
+  };
 }
