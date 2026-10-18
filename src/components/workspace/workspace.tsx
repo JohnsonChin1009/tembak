@@ -133,6 +133,7 @@ function WorkspaceShell({
           openRequest={openRequest}
           onOpenNav={() => setNavOpen(true)}
           onAppsStale={refreshApps}
+          onChannelChanged={(c) => setChannels((cs) => cs.map((x) => (x.id === c.id ? c : x)))}
           renderPanelActions={(app, version) => (
             <PublishControls
               app={app}

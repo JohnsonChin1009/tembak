@@ -100,6 +100,24 @@ export class MemoryStore implements Store {
     }
   }
 
+  async deleteWorkspace(workspaceId: string) {
+    await this.clearWorkspace(workspaceId);
+    const prefix = `${workspaceId}/`;
+    for (const key of [...this.connections.keys()]) if (key.startsWith(prefix)) this.connections.delete(key);
+    for (const key of [...this.skills.keys()]) if (key.startsWith(prefix)) this.skills.delete(key);
+    for (const uid of this.members.get(workspaceId)?.keys() ?? []) {
+      const user = this.users.get(uid);
+      if (!user) continue;
+      this.users.set(uid, {
+        ...user,
+        workspaceIds: (user.workspaceIds ?? []).filter((id) => id !== workspaceId),
+        lastWorkspaceId: user.lastWorkspaceId === workspaceId ? undefined : user.lastWorkspaceId,
+      });
+    }
+    this.members.delete(workspaceId);
+    this.workspaces.delete(workspaceId);
+  }
+
   async listChannels(workspaceId: string) {
     return [...this.channels.values()]
       .filter((c) => c.workspaceId === workspaceId)
@@ -110,6 +128,10 @@ export class MemoryStore implements Store {
   }
   async createChannel(channel: Channel) {
     this.channels.set(k(channel.workspaceId, channel.id), channel);
+  }
+  async updateChannel(workspaceId: string, id: string, patch: Partial<Pick<Channel, "name" | "topic">>) {
+    const channel = this.channels.get(k(workspaceId, id));
+    if (channel) this.channels.set(k(workspaceId, id), { ...channel, ...patch });
   }
 
   async listMessages(workspaceId: string, channelId: string, limit = 100) {

@@ -37,10 +37,13 @@ export interface Store {
   listWorkspacesForUser(uid: string): Promise<Workspace[]>;
   /** Deletes a workspace's channels, messages, sources, and apps. Keeps the workspace and members. */
   clearWorkspace(workspaceId: string): Promise<void>;
+  /** Deletes the workspace and everything in it, and removes it from members' workspace lists. */
+  deleteWorkspace(workspaceId: string): Promise<void>;
 
   listChannels(workspaceId: string): Promise<Channel[]>;
   getChannel(workspaceId: string, id: string): Promise<Channel | null>;
   createChannel(channel: Channel): Promise<void>;
+  updateChannel(workspaceId: string, id: string, patch: Partial<Pick<Channel, "name" | "topic">>): Promise<void>;
 
   /** Most recent `limit` messages, oldest first. */
   listMessages(workspaceId: string, channelId: string, limit?: number): Promise<Message[]>;

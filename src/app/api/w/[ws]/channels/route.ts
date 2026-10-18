@@ -18,7 +18,8 @@ export const POST = handle(async (req: Request, ctx: RouteContext<"/api/w/[ws]/c
   );
   const store = await getStore();
   const id = kebab(body.name, 32);
-  const existing = await store.getChannel(workspace.id, id);
+  // Renamed channels keep their old id, so match on either.
+  const existing = (await store.listChannels(workspace.id)).find((c) => c.id === id || c.name === id);
   if (existing) return json(existing);
 
   const channel: Channel = {

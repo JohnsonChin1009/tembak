@@ -169,10 +169,22 @@ Public routes are unchanged.
 - Firestore rules stay deny-all; all access goes through the server.
 - `ALLOWED_EMAIL_DOMAINS` still gates sign-in globally.
 
+## Managing channels and workspaces
+
+- **Rename a channel** (pencil in the channel header): any member in a team workspace,
+  only maintainers in the demo. `PATCH /api/w/[ws]/channels/[id] {name?, topic?}`. Only the
+  display name changes; the id and URL stay the same, so links and messages keep working.
+  Names are kebab-cased and unique within the workspace (409 otherwise).
+- **Delete a workspace** (workspace menu, owners only, not the demo): the owner types the
+  workspace name to confirm. `DELETE /api/w/[ws] {confirm: name}` removes the workspace,
+  its channels, messages, sources, connections, skills, members, and its apps (published
+  links stop working), and removes it from every member's workspace list. Everyone lands on
+  their next workspace, or `/new`.
+
 ## Out of scope (for now)
 
-Email invites, removing members, transferring ownership, deleting workspaces,
-per-channel permissions, billing.
+Email invites, removing members, transferring ownership, renaming workspaces,
+deleting channels, per-channel permissions, billing.
 
 ## Acceptance
 

@@ -106,6 +106,19 @@ export class FirestoreStore implements Store {
     for (const doc of apps.docs) await this.db.recursiveDelete(doc.ref);
   }
 
+  async deleteWorkspace(workspaceId: string) {
+    const members = await this.ws(workspaceId).collection("members").get();
+    const batch = this.db.batch();
+    for (const doc of members.docs) {
+      batch.set(this.db.collection("users").doc(doc.id), { workspaceIds: FieldValue.arrayRemove(workspaceId) }, { merge: true });
+    }
+    await batch.commit();
+    // Apps live at the top level; everything else is under the workspace doc.
+    const apps = await this.db.collection("apps").where("workspaceId", "==", workspaceId).get();
+    for (const doc of apps.docs) await this.db.recursiveDelete(doc.ref);
+    await this.db.recursiveDelete(this.ws(workspaceId));
+  }
+
   async listChannels(workspaceId: string) {
     const snap = await this.channelsCol(workspaceId).orderBy("createdAt").get();
     return snap.docs.map((d) => d.data() as Channel);
@@ -115,6 +128,9 @@ export class FirestoreStore implements Store {
   }
   async createChannel(channel: Channel) {
     await this.channelsCol(channel.workspaceId).doc(channel.id).set(channel);
+  }
+  async updateChannel(workspaceId: string, id: string, patch: Partial<Pick<Channel, "name" | "topic">>) {
+    await this.channelsCol(workspaceId).doc(id).set(patch, { merge: true });
   }
 
   async listMessages(workspaceId: string, channelId: string, limit = 100) {
