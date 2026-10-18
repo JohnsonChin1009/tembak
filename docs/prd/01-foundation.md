@@ -18,8 +18,8 @@ Server-only, read once from env, validated with zod.
 | `AUTH_MODE` | `dev` | `dev` (pick a name, no password) or `firebase` |
 | `AGENT_MODE` | `mock` if no `GEMINI_API_KEY`, else `gemini` | `mock` or `gemini` |
 | `GEMINI_API_KEY` | (none) | Gemini Developer API key. Or use `GOOGLE_GENAI_USE_VERTEXAI=true` |
-| `GEMINI_MODEL` | `gemini-4-argon` | Builds and revisions |
-| `GEMINI_FAST_MODEL` | `gemini-3.8-flash` | Triage (reply or build?) |
+| `GEMINI_MODEL` | `gemini-3.5-flash` | Builds and revisions |
+| `GEMINI_FAST_MODEL` | `gemini-3.5-flash` | Triage (reply or build?) |
 | `APP_URL` | `http://localhost:3000` | Public URL of the workspace |
 | `APPS_URL` | `APP_URL` | Public origin for published apps, e.g. `https://apps.example.com` |
 | `ALLOWED_EMAIL_DOMAINS` | (none) | Comma list; empty means any Google account |
