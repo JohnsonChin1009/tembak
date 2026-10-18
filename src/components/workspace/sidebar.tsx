@@ -7,6 +7,7 @@ import clsx from "clsx";
 import { Hash, LogOut, Plus } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { usePeople } from "@/components/people/people-context";
+import { channelNameDraft } from "@/lib/ids";
 import type { Channel, User } from "@/lib/types";
 import { useWorkspace } from "./workspace-context";
 import { WorkspaceMenu, type WorkspaceLink } from "./workspace-menu";
@@ -83,7 +84,8 @@ export function Sidebar({
               <input
                 autoFocus
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => setName(channelNameDraft(e.target.value))}
+                maxLength={32}
                 onBlur={() => !name && setCreating(false)}
                 placeholder="new-channel"
                 className="h-8 w-full rounded-md border border-line-strong bg-raised px-2 text-sm outline-none focus:border-accent"

@@ -29,11 +29,17 @@ export const POST = handle(async (req: Request, ctx: Ctx) => {
       id: z.string().regex(/^[a-z0-9]{8,32}$/).optional(),
       text: z.string().trim().min(1).max(8000),
       appRef: z.object({ appId: z.string(), version: z.number().int().positive() }).optional(),
+      /** Reply in the thread under this channel message. */
+      threadId: z.string().max(64).optional(),
     }),
   );
 
   const store = await getStore();
   if (!(await store.getChannel(workspace.id, channelId))) throw new HttpError(404, "Channel not found");
+  if (body.threadId) {
+    const parent = await store.getMessage(workspace.id, channelId, body.threadId);
+    if (!parent) throw new HttpError(404, "Message not found");
+  }
   if (body.appRef) {
     const app = await store.getApp(body.appRef.appId);
     if (app?.workspaceId !== workspace.id) throw new HttpError(404, "App not found");
@@ -49,6 +55,7 @@ export const POST = handle(async (req: Request, ctx: Ctx) => {
     // Requests from the builder panel always go to the agent.
     mentionsAgent: !!body.appRef || mentionsAgent(body.text),
     appRef: body.appRef,
+    threadId: body.threadId,
   };
   await store.addMessage(message);
 

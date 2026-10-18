@@ -34,9 +34,12 @@ export async function startAgentRun(trigger: Message): Promise<void> {
     status: "thinking",
     statusLine: "Reading the conversation...",
     replyTo: trigger.id,
+    // Mentioned in a thread, it answers in that thread.
+    threadId: trigger.threadId,
   };
   await store.addMessage(reply);
-  const update = (patch: Update) => store.updateMessage(reply.workspaceId, reply.channelId, reply.id, patch);
+  const update = (patch: Update) =>
+    store.updateMessage(reply.workspaceId, reply.channelId, reply.id, patch, reply.threadId);
 
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {

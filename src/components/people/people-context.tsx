@@ -14,6 +14,8 @@ type Value = {
   load: (uid: string) => void;
   /** The profile open in the side panel, if any. */
   sheet: PersonFallback | null;
+  /** Everyone in the workspace, for @-mentions. Empty in the open demo. */
+  members: Member[];
   openSheet: (person: PersonFallback) => void;
   closeSheet: () => void;
 };
@@ -67,8 +69,8 @@ export function PeopleProvider({
 
   const closeSheet = useCallback(() => setSheet(null), []);
   const value = useMemo(
-    () => ({ me, get, load, sheet, openSheet: setSheet, closeSheet }),
-    [me, get, load, sheet, closeSheet],
+    () => ({ me, get, load, sheet, members, openSheet: setSheet, closeSheet }),
+    [me, get, load, sheet, members, closeSheet],
   );
 
   return (

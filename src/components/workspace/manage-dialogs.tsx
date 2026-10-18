@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, Trash2, X } from "lucide-react";
 import { Modal } from "@/components/data/data-dialog";
+import { channelNameDraft } from "@/lib/ids";
 import type { Channel } from "@/lib/types";
 import { useWorkspace } from "./workspace-context";
 
@@ -76,8 +77,8 @@ export function ChannelSettingsDialog({
             <input
               autoFocus
               value={name}
-              maxLength={40}
-              onChange={(e) => setName(e.target.value)}
+              maxLength={32}
+              onChange={(e) => setName(channelNameDraft(e.target.value))}
               className={`${input} pl-7`}
             />
           </div>

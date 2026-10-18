@@ -13,16 +13,15 @@ function merge(list: Pending[], incoming: Message[]): Pending[] {
   return [...byId.values()].sort((a, b) => a.createdAt - b.createdAt);
 }
 
+/** Called for each live update (not the initial snapshot) with the previous copy and the current list. */
+export type MessageUpdateHandler = (message: Message, previous: Message | undefined, list: Message[]) => void;
+
 /**
- * Live message list for one channel: SSE snapshot + updates, with optimistic sends.
- * Mount it under a `key` of the channel id so switching channels starts fresh.
+ * Live message list for one channel, or one thread in it when `threadId` is set:
+ * SSE snapshot + updates, with optimistic sends. Mount it under a `key` of the
+ * channel (and thread) id so switching starts fresh.
  */
-export function useChannel(
-  channelId: string,
-  user: User,
-  /** Called for each live update (not the initial snapshot) with the previous copy, if any. */
-  onUpdate?: (message: Message, previous: Message | undefined) => void,
-) {
+export function useChannel(channelId: string, user: User, onUpdate?: MessageUpdateHandler, threadId?: string) {
   const { workspace, api } = useWorkspace();
   const [messages, setMessages] = useState<Pending[]>([]);
   const latest = useRef<Pending[]>([]);
@@ -35,7 +34,9 @@ export function useChannel(
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    const es = new EventSource(`${api}/channels/${channelId}/stream`);
+    const es = new EventSource(
+      threadId ? `${api}/channels/${channelId}/threads/${threadId}/stream` : `${api}/channels/${channelId}/stream`,
+    );
     es.addEventListener("snapshot", (e) => {
       const snapshot = JSON.parse((e as MessageEvent).data) as Message[];
       // Keep optimistic messages that the snapshot doesn't know about yet.
@@ -44,13 +45,13 @@ export function useChannel(
     });
     es.addEventListener("message", (e) => {
       const m = JSON.parse((e as MessageEvent).data) as Message;
-      onUpdateRef.current?.(m, latest.current.find((x) => x.id === m.id));
+      onUpdateRef.current?.(m, latest.current.find((x) => x.id === m.id), latest.current);
       setMessages((prev) => merge(prev, [m]));
     });
     es.onopen = () => setConnected(true);
     es.onerror = () => setConnected(false);
     return () => es.close();
-  }, [api, channelId]);
+  }, [api, channelId, threadId]);
 
   const send = useCallback(
     async (text: string, appRef?: AppRef) => {
@@ -64,13 +65,14 @@ export function useChannel(
         text,
         mentionsAgent: !!appRef || /(^|\s)@tembak\b/i.test(text),
         appRef,
+        threadId,
         pending: true,
       };
       setMessages((prev) => merge(prev, [optimistic]));
       const res = await fetch(`${api}/channels/${channelId}/messages`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ id, text, appRef }),
+        body: JSON.stringify({ id, text, appRef, threadId }),
       }).catch(() => null);
       if (!res?.ok) {
         setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, pending: false, failed: true } : m)));
@@ -79,7 +81,7 @@ export function useChannel(
       const saved = (await res.json()) as Message;
       setMessages((prev) => merge(prev, [saved]));
     },
-    [api, channelId, user, workspace.id],
+    [api, channelId, threadId, user, workspace.id],
   );
 
   return { messages, loaded, connected, send };

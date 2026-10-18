@@ -5,13 +5,14 @@ import { Hash, Menu, Pencil } from "lucide-react";
 import { AppCard, AppChip } from "@/components/builder/app-card";
 import { BuilderPanel } from "@/components/builder/builder-panel";
 import { ChannelView } from "@/components/chat/channel-view";
-import { useChannel, type ChannelMessage } from "@/components/chat/use-channel";
+import { ThreadPanel } from "@/components/chat/thread-panel";
+import { useChannel, type ChannelMessage, type MessageUpdateHandler } from "@/components/chat/use-channel";
 import { Checklist } from "@/components/onboarding/checklist";
 import { Hint } from "@/components/onboarding/hint";
 import { JoinBanner } from "@/components/onboarding/join-banner";
 import { useOnboarding } from "@/components/onboarding/onboarding-context";
 import { GETTING_STARTED_CHANNEL, GETTING_STARTED_PROMPT } from "@/lib/onboarding";
-import type { App, AppRef, Channel, Message, User } from "@/lib/types";
+import type { App, AppRef, Channel, User } from "@/lib/types";
 import { ChannelSettingsDialog } from "./manage-dialogs";
 import { usePanelWidth } from "./use-panel-width";
 import { useWorkspace } from "./workspace-context";
@@ -76,16 +77,16 @@ export function ChannelScope({
   // auto-open the panel for the person who asked. Refs give the SSE callback
   // the latest values without resubscribing.
   const appsRef = useRef(appsById);
-  const messagesRef = useRef<ChannelMessage[]>([]);
   const recordRef = useRef(onboarding?.record);
-  const onUpdate = useCallback(
-    (m: Message, prev: Message | undefined) => {
+  // Shared by the channel and an open thread; `list` is whichever one the update came from.
+  const onUpdate = useCallback<MessageUpdateHandler>(
+    (m, prev, list) => {
       if (m.author.kind !== "agent" || m.status !== "done" || !m.appRef) return;
       if (prev?.status === "done" && prev.appRef?.version === m.appRef.version) return;
       const known = appsRef.current.get(m.appRef.appId);
       // New versions and publishes both change app metadata.
       if (!prev || !known || known.latestVersion < m.appRef.version) onAppsStale();
-      const trigger = messagesRef.current.find((x) => x.id === m.replyTo);
+      const trigger = list.find((x) => x.id === m.replyTo);
       if (trigger?.author.kind === "user" && trigger.author.uid === user.uid) {
         setOpen({ appId: m.appRef.appId, version: m.appRef.version });
         // A new version of an existing app means they asked for a change in chat.
@@ -97,9 +98,10 @@ export function ChannelScope({
   const { messages, loaded, send } = useChannel(channel.id, user, onUpdate);
   useEffect(() => {
     appsRef.current = appsById;
-    messagesRef.current = messages;
     recordRef.current = onboarding?.record;
   });
+  const [threadId, setThreadId] = useState<string | null>(null);
+  const threadParent = threadId ? messages.find((m) => m.id === threadId) : undefined;
 
   const { width, containerRef, handleProps } = usePanelWidth();
 
@@ -162,6 +164,7 @@ export function ChannelScope({
           send={(text) => sendMessage(text)}
           renderAppRef={renderAppRef}
           starters={guided ? [GETTING_STARTED_PROMPT] : undefined}
+          onOpenThread={(m) => setThreadId(m.id)}
           top={
             <>
               <JoinBanner apps={apps} onOpenApp={(a) => setOpen({ appId: a.id })} />
@@ -170,6 +173,21 @@ export function ChannelScope({
           }
         />
       </main>
+
+      {threadParent ? (
+        <ThreadPanel
+          key={threadParent.id}
+          channel={channel}
+          parent={threadParent}
+          user={user}
+          renderAppRef={renderAppRef}
+          onUpdate={onUpdate}
+          onSent={(text) => {
+            if (/(^|\s)@tembak\b/i.test(text)) record?.("mention");
+          }}
+          onClose={() => setThreadId(null)}
+        />
+      ) : null}
 
       {openApp ? (
         <>

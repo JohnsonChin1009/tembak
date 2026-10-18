@@ -106,6 +106,17 @@ body {
 }
 .md strong { color: var(--fg); font-weight: 600; }
 .md h1, .md h2, .md h3 { font-weight: 600; }
+.md blockquote { border-left: 4px solid var(--line-strong); padding-left: 0.75rem; color: var(--muted); }
+.md pre {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 0.85em;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  white-space: pre-wrap;
+}
+.md pre code { background: none; border: 0; padding: 0; font-size: inherit; }
 
 @keyframes tembak-sheet-in {
   from { transform: translateX(24px); opacity: 0; }
@@ -117,4 +128,24 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .dot-pulse > span, .sheen, .sheet-in { animation: none; }
+}
+
+/* Composer (Tiptap) */
+.tiptap p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  color: var(--faint);
+  pointer-events: none;
+}
+.tiptap .mention {
+  border-radius: 4px;
+  padding: 0 2px;
+  font-weight: 500;
+  color: var(--info);
+  background: color-mix(in srgb, var(--info) 15%, transparent);
+}
+.tiptap .mention[data-mention="agent"] {
+  color: var(--accent);
+  background: var(--accent-dim);
 }
