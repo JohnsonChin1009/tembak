@@ -32,8 +32,8 @@ async function withGemini<T>(timeoutMs: number, fn: (signal: AbortSignal) => Pro
       return await fn(controller.signal);
     } catch (err) {
       if (controller.signal.aborted) throw new Error(`Gemini timed out after ${timeoutMs / 1000}s`);
-      // Free-tier keys hit per-minute limits; wait once, then give up with a clear message.
-      if (attempt === 0 && isRateLimit(err)) {
+      // Free-tier per-minute limits and "high demand" 503s pass quickly; wait once, then give up.
+      if (attempt === 0 && isTransient(err)) {
         await new Promise((r) => setTimeout(r, RETRY_AFTER_MS));
         continue;
       }
@@ -44,9 +44,9 @@ async function withGemini<T>(timeoutMs: number, fn: (signal: AbortSignal) => Pro
   }
 }
 
-function isRateLimit(err: unknown): boolean {
+function isTransient(err: unknown): boolean {
   const status = (err as { status?: number }).status;
-  return status === 429 || /RESOURCE_EXHAUSTED/i.test(err instanceof Error ? err.message : String(err));
+  return status === 429 || status === 503 || /RESOURCE_EXHAUSTED|UNAVAILABLE/i.test(err instanceof Error ? err.message : String(err));
 }
 
 export function generateText(call: Call): Promise<string> {
@@ -110,6 +110,9 @@ function friendlyError(err: unknown): Error {
   }
   if (status === 429 || /RESOURCE_EXHAUSTED|quota/i.test(raw)) {
     return new Error("Gemini rate limit hit. Wait a minute and try again.");
+  }
+  if (status === 503 || /UNAVAILABLE|high demand|overloaded/i.test(raw)) {
+    return new Error("Gemini is overloaded right now. Try again in a minute.");
   }
   if (status === 404 || /not found|not supported/i.test(raw)) {
     return new Error(`Gemini model not available to this key (${modelHint(raw)}).`);

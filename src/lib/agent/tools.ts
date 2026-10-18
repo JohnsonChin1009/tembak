@@ -291,7 +291,10 @@ async function buildApp(args: Args, state: RunState): Promise<Result> {
     title,
     version: 1,
     summary,
-    note: model === "template-fallback" ? "The full build failed, so a generic starter dashboard was used. Say so briefly." : undefined,
+    note:
+      model === "template-fallback"
+        ? "IMPORTANT: the custom build failed, so this is a generic starter dashboard. Tell the user that plainly and offer to try again."
+        : undefined,
   };
 }
 
