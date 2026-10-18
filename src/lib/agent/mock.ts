@@ -2,12 +2,22 @@ import "server-only";
 import { SAMPLE_DATASETS } from "@/lib/data/samples";
 import type { App, Source } from "@/lib/types";
 import type { AgentContext } from "./context";
-import type { Triage } from "./prompts";
 import { dashboardTemplate } from "./template";
+
+/** What the scripted mock agent decides to do (no Gemini). */
+export type MockPlan = {
+  action: "reply" | "build" | "revise" | "answer";
+  message: string;
+  title?: string;
+  brief?: string;
+  appId?: string;
+  sourceKeys?: string[];
+};
 
 const ACCENTS = ["#4f46e5", "#0d9488", "#e11d48", "#ea580c", "#7c3aed", "#0284c7"];
 const REVISE_RE = /\b(change|make it|add|remove|update|revise|tweak|instead|also|switch|rename|color|colour)\b/i;
 const BUILD_RE = /\b(build|make|create|dashboard|tracker|app|tool|go|yes)\b/i;
+const DATA_Q_RE = /\b(which|what|how many|how much|total|lowest|highest|most|least|best|worst|top)\b/i;
 
 export function pickSource(text: string, sources: Source[]): Source | null {
   const t = text.toLowerCase();
@@ -32,7 +42,7 @@ function titleFor(source: Source | null, request: string): string {
   return map[source.key] ?? `${source.name} Dashboard`;
 }
 
-export function mockTriage(ctx: AgentContext): Triage {
+export function mockTriage(ctx: AgentContext): MockPlan {
   const req = ctx.request;
   const latest = ctx.targetApp ?? ctx.channelApps[0];
   if (latest && (ctx.targetApp || REVISE_RE.test(req))) {
@@ -42,6 +52,10 @@ export function mockTriage(ctx: AgentContext): Triage {
       message: `Updated **${latest.title}**.`,
       brief: req,
     };
+  }
+  if (req.includes("?") && !BUILD_RE.test(req) && DATA_Q_RE.test(req) && ctx.sources.length) {
+    const source = pickSource(`${req}\n${ctx.transcript}`, ctx.sources);
+    return { action: "answer", message: "", sourceKeys: source ? [source.key] : [] };
   }
   if (req.includes("?") && !BUILD_RE.test(req)) {
     return {

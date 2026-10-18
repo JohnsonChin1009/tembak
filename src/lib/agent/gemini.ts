@@ -1,5 +1,5 @@
 import "server-only";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, type Content, type FunctionCall, type FunctionDeclaration } from "@google/genai";
 import { config } from "@/lib/config";
 
 let client: GoogleGenAI | undefined;
@@ -21,41 +21,83 @@ type Call = {
   temperature?: number;
 };
 
-async function generate(call: Call, extra: Record<string, unknown> = {}): Promise<string> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), call.timeoutMs);
-  try {
+const RETRY_AFTER_MS = 5_000;
+
+/** Runs a Gemini call with a timeout, one retry on rate limits, and readable errors. */
+async function withGemini<T>(timeoutMs: number, fn: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fn(controller.signal);
+    } catch (err) {
+      if (controller.signal.aborted) throw new Error(`Gemini timed out after ${timeoutMs / 1000}s`);
+      // Free-tier keys hit per-minute limits; wait once, then give up with a clear message.
+      if (attempt === 0 && isRateLimit(err)) {
+        await new Promise((r) => setTimeout(r, RETRY_AFTER_MS));
+        continue;
+      }
+      throw friendlyError(err);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+}
+
+function isRateLimit(err: unknown): boolean {
+  const status = (err as { status?: number }).status;
+  return status === 429 || /RESOURCE_EXHAUSTED/i.test(err instanceof Error ? err.message : String(err));
+}
+
+export function generateText(call: Call): Promise<string> {
+  return withGemini(call.timeoutMs, async (abortSignal) => {
     const res = await genai().models.generateContent({
       model: call.model,
       contents: [{ role: "user", parts: [{ text: call.prompt }] }],
-      config: {
-        systemInstruction: call.system,
-        temperature: call.temperature,
-        abortSignal: controller.signal,
-        ...extra,
-      },
+      config: { systemInstruction: call.system, temperature: call.temperature, abortSignal },
     });
     const text = res.text;
     if (!text) throw new Error("Gemini returned an empty response");
     return text;
-  } catch (err) {
-    if (controller.signal.aborted) throw new Error(`Gemini timed out after ${call.timeoutMs / 1000}s`);
-    throw friendlyError(err);
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-export async function generateJson<T>(call: Call & { schema: object }): Promise<T> {
-  const text = await generate(call, {
-    responseMimeType: "application/json",
-    responseJsonSchema: call.schema,
   });
-  return JSON.parse(text) as T;
 }
 
-export function generateText(call: Call): Promise<string> {
-  return generate(call);
+export type ToolTurn = {
+  /** The model's turn, verbatim (keeps thought signatures for the next request). */
+  content: Content;
+  calls: FunctionCall[];
+  text: string;
+};
+
+/** One step of a function-calling conversation. */
+export function generateWithTools(input: {
+  model: string;
+  system: string;
+  contents: Content[];
+  tools: FunctionDeclaration[];
+  timeoutMs: number;
+  temperature?: number;
+}): Promise<ToolTurn> {
+  return withGemini(input.timeoutMs, async (abortSignal) => {
+    const res = await genai().models.generateContent({
+      model: input.model,
+      contents: input.contents,
+      config: {
+        systemInstruction: input.system,
+        temperature: input.temperature,
+        tools: [{ functionDeclarations: input.tools }],
+        abortSignal,
+      },
+    });
+    const content = res.candidates?.[0]?.content;
+    if (!content?.parts?.length) throw new Error("Gemini returned an empty response");
+    const text = content.parts
+      .filter((p) => p.text && !p.thought)
+      .map((p) => p.text)
+      .join("")
+      .trim();
+    return { content: { role: "model", parts: content.parts }, calls: res.functionCalls ?? [], text };
+  });
 }
 
 /** Turns raw API errors (often a JSON blob) into one readable line. */
