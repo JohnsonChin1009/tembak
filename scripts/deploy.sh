@@ -54,8 +54,8 @@ gcloud run deploy "$SERVICE" \
   --source . \
   --service-account "$SA" \
   --allow-unauthenticated \
-  --min-instances 1 \
-  --max-instances 4 \
+  --min-instances "${MIN_INSTANCES:-0}" \
+  --max-instances "${MAX_INSTANCES:-2}" \
   --no-cpu-throttling \
   --cpu 1 \
   --memory 1Gi \

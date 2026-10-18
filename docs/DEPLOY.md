@@ -109,10 +109,10 @@ secrets from the last `deploy.sh` run and only swaps the image.
 
 | Flag | Why |
 |---|---|
-| `--min-instances 1` | No cold start in the demo; keeps the in-memory caches warm |
+| `--min-instances` (`MIN_INSTANCES`, default 0) | Scales to zero when idle so it costs almost nothing; set 1 before a demo to skip the cold start (bills 24/7 while set) |
 | `--no-cpu-throttling` | The agent keeps working after the HTTP response returns (`after()`) |
 | `--timeout 300` | SSE chat streams are long-lived and reconnect automatically |
-| `--max-instances 4` | Realtime goes through Firestore listeners, so scaling out is safe |
+| `--max-instances` (`MAX_INSTANCES`, default 2) | Caps spend; realtime goes through Firestore listeners, so scaling out is safe |
 
 ## Troubleshooting
 
