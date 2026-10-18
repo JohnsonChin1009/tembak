@@ -6,11 +6,13 @@ import { useRouter } from "next/navigation";
 import { AppWindow } from "lucide-react";
 import { PublishControls } from "@/components/builder/publish-controls";
 import { DataSection } from "@/components/data/data-section";
+import { Hint } from "@/components/onboarding/hint";
+import { OnboardingProvider, useOnboarding, type OnboardingInit } from "@/components/onboarding/onboarding-context";
 import type { App, Channel, Source, User, WorkspaceInfo } from "@/lib/types";
 import { ChannelScope, type OpenApp } from "./channel-scope";
 import { Section, Sidebar } from "./sidebar";
 import { WorkspaceProvider } from "./workspace-context";
-import type { WorkspaceLink } from "./workspace-menu";
+import { InviteDialog, type WorkspaceLink } from "./workspace-menu";
 
 type Props = {
   user: User;
@@ -24,12 +26,15 @@ type Props = {
   serviceAccountEmail?: string;
   agentMode: "mock" | "gemini";
   initialOpen: OpenApp | null;
+  onboarding: OnboardingInit;
 };
 
 export function Workspace(props: Props) {
   return (
     <WorkspaceProvider workspace={props.workspace}>
-      <WorkspaceShell {...props} />
+      <OnboardingProvider init={props.onboarding}>
+        <WorkspaceShell {...props} />
+      </OnboardingProvider>
     </WorkspaceProvider>
   );
 }
@@ -47,6 +52,7 @@ function WorkspaceShell({
   initialOpen,
 }: Props) {
   const router = useRouter();
+  const onboarding = useOnboarding();
   const base = `/w/${encodeURIComponent(workspace.slug)}`;
   const api = `/api${base}`;
   const [channels, setChannels] = useState(initialChannels);
@@ -90,7 +96,9 @@ function WorkspaceShell({
           onCreateChannel={createChannel}
         >
           <Section title="Apps">
-            {apps.length === 0 ? <p className="px-2 py-1 text-xs text-faint">Nothing built yet</p> : null}
+            {apps.length === 0 ? (
+              <p className="px-2 py-1 text-xs text-faint">Apps built in this workspace show up here.</p>
+            ) : null}
             {apps.slice(0, 12).map((a) => (
               <Link
                 key={a.id}
@@ -109,6 +117,9 @@ function WorkspaceShell({
             ))}
           </Section>
           <DataSection sources={sources} serviceAccountEmail={serviceAccountEmail} onChange={setSources} />
+          <Hint id="data" show={!!onboarding?.hintSeen("builder")} className="mx-1 mt-2 text-xs">
+            Connect a Google Sheet, Notion database, or Linear team, then ask @tembak to use it.
+          </Hint>
         </Sidebar>
       </div>
       {channel ? (
@@ -123,10 +134,17 @@ function WorkspaceShell({
           onOpenNav={() => setNavOpen(true)}
           onAppsStale={refreshApps}
           renderPanelActions={(app, version) => (
-            <PublishControls app={app} version={version} appsUrl={appsUrl} onChanged={refreshApps} />
+            <PublishControls
+              app={app}
+              version={version}
+              appsUrl={appsUrl}
+              onChanged={refreshApps}
+              onPublished={() => onboarding?.record("publish")}
+            />
           )}
         />
       ) : null}
+      {onboarding?.inviteOpen ? <InviteDialog onClose={() => onboarding.setInviteOpen(false)} /> : null}
     </div>
   );
 }

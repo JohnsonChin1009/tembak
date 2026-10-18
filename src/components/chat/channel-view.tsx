@@ -21,12 +21,18 @@ export function ChannelView({
   loaded,
   send,
   renderAppRef,
+  starters = STARTERS,
+  top,
 }: {
   channel: Channel;
   messages: ChannelMessage[];
   loaded: boolean;
   send: (text: string) => Promise<void>;
   renderAppRef?: (ref: AppRef, message: ChannelMessage) => React.ReactNode;
+  /** Suggestion chips above the composer until the agent has been used here. Clicking fills, never sends. */
+  starters?: string[];
+  /** Pinned above the messages (onboarding checklist, banners). */
+  top?: React.ReactNode;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const atBottom = useRef(true);
@@ -74,6 +80,7 @@ export function ChannelView({
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
+      {top}
       <div ref={scroller} onScroll={onScroll} className="flex-1 overflow-y-auto pb-4">
         {loaded && messages.length === 0 ? <EmptyChannel channel={channel} /> : null}
         {!loaded ? <LoadingRows /> : null}
@@ -101,9 +108,9 @@ export function ChannelView({
       ) : null}
 
       <div className="px-5 pb-5">
-        {loaded && !hasAgent && messages.length > 0 ? (
-          <div className="mb-2 flex flex-wrap gap-1.5">
-            {STARTERS.map((s) => (
+        {loaded && !hasAgent ? (
+          <div className="mb-2 flex flex-wrap gap-1.5" data-testid="starters">
+            {starters.map((s) => (
               <button
                 key={s}
                 onClick={() => composer.current?.insert(s)}
@@ -136,10 +143,10 @@ export function ChannelView({
 function EmptyChannel({ channel }: { channel: Channel }) {
   return (
     <div className="mx-5 mt-10 max-w-lg">
-      <p className="text-2xl font-semibold tracking-tight">Welcome to #{channel.name}</p>
+      <p className="text-2xl font-semibold tracking-tight">This is the start of #{channel.name}</p>
       <p className="mt-2 text-sm leading-relaxed text-muted">
-        Talk it through here. When there&apos;s enough context, tag <span className="text-accent">@tembak</span> and
-        ask for a dashboard, a tracker, a calculator, anything small your team needs today.
+        Describe what you need, then tag <span className="text-accent">@tembak</span>. It can build a dashboard, a
+        tracker, a form, anything small your team needs today. Or start from a suggestion below.
       </p>
     </div>
   );

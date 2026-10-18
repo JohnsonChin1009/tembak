@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, LoaderCircle } from "lucide-react";
+import { GETTING_STARTED_CHANNEL } from "@/lib/onboarding";
 
 export function NewWorkspaceForm() {
   const [name, setName] = useState("");
@@ -25,7 +26,8 @@ export function NewWorkspaceForm() {
       setBusy(false);
       return;
     }
-    router.push(`/w/${data.slug}`);
+    // New workspaces open on the guided first build.
+    router.push(`/w/${data.slug}/c/${GETTING_STARTED_CHANNEL}`);
   }
 
   return (
@@ -39,7 +41,7 @@ export function NewWorkspaceForm() {
         maxLength={40}
         value={name}
         onChange={(e) => setName(e.target.value)}
-        placeholder="e.g. Acme Marketing"
+        placeholder="Acme Marketing"
         className="h-11 w-full rounded-lg border border-line-strong bg-raised px-3 text-fg outline-none transition placeholder:text-faint focus:border-accent"
       />
       <button

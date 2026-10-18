@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Check, ChevronsUpDown, Copy, LoaderCircle, Plus, RotateCcw, UserPlus, X } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { Modal } from "@/components/data/data-dialog";
+import { useOnboarding } from "@/components/onboarding/onboarding-context";
 import type { Member } from "@/lib/types";
 import { useWorkspace } from "./workspace-context";
 
@@ -80,8 +81,9 @@ export function WorkspaceMenu({ workspaces }: { workspaces: WorkspaceLink[] }) {
 
 type Info = { inviteUrl: string | null; canReset: boolean; members: Member[] };
 
-function InviteDialog({ onClose }: { onClose: () => void }) {
+export function InviteDialog({ onClose }: { onClose: () => void }) {
   const { workspace, api, base } = useWorkspace();
+  const onboarding = useOnboarding();
   const [info, setInfo] = useState<Info | null>(null);
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState<"rotate" | "reset" | null>(null);
@@ -101,6 +103,7 @@ function InviteDialog({ onClose }: { onClose: () => void }) {
   async function copy() {
     if (!info?.inviteUrl) return;
     await navigator.clipboard.writeText(info.inviteUrl).catch(() => {});
+    onboarding?.record("invite");
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }
@@ -182,6 +185,9 @@ function InviteDialog({ onClose }: { onClose: () => void }) {
             Members{info ? ` · ${info.members.length}` : ""}
           </h3>
           {!info && !error ? <LoaderCircle className="size-4 animate-spin text-faint" /> : null}
+          {info && info.members.length === 1 && !workspace.open ? (
+            <p className="mb-2 text-sm text-muted">It&apos;s just you so far. Tembak works best with your team.</p>
+          ) : null}
           <ul className="max-h-64 space-y-1 overflow-y-auto">
             {info?.members.map((m) => (
               <li key={m.uid} className="flex items-center gap-3 rounded-md px-1 py-1">
