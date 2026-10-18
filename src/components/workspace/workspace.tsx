@@ -8,7 +8,8 @@ import { PublishControls } from "@/components/builder/publish-controls";
 import { DataSection } from "@/components/data/data-section";
 import { Hint } from "@/components/onboarding/hint";
 import { OnboardingProvider, useOnboarding, type OnboardingInit } from "@/components/onboarding/onboarding-context";
-import { PeopleProvider } from "@/components/people/people-context";
+import { PeopleProvider, usePeople } from "@/components/people/people-context";
+import { PersonSheet } from "@/components/people/person-sheet";
 import type { App, Channel, Member, Source, User, WorkspaceInfo } from "@/lib/types";
 import { ChannelScope, type OpenApp } from "./channel-scope";
 import { Section, Sidebar } from "./sidebar";
@@ -62,6 +63,7 @@ function WorkspaceShell({
 }: Props) {
   const router = useRouter();
   const onboarding = useOnboarding();
+  const people = usePeople();
   const base = `/w/${encodeURIComponent(workspace.slug)}`;
   const api = `/api${base}`;
   const [channels, setChannels] = useState(initialChannels);
@@ -94,7 +96,7 @@ function WorkspaceShell({
       <div
         className={navOpen ? "fixed inset-y-0 left-0 z-50 flex md:static md:z-auto" : "hidden md:flex"}
         onClickCapture={(e) => {
-          if ((e.target as HTMLElement).closest("a")) setNavOpen(false);
+          if ((e.target as HTMLElement).closest("a, [data-closes-nav]")) setNavOpen(false);
         }}
       >
         <Sidebar
@@ -154,6 +156,7 @@ function WorkspaceShell({
           )}
         />
       ) : null}
+      {people?.sheet ? <PersonSheet key={people.sheet.uid} person={people.sheet} onClose={people.closeSheet} /> : null}
       {onboarding?.inviteOpen ? <InviteDialog onClose={() => onboarding.setInviteOpen(false)} /> : null}
     </div>
   );

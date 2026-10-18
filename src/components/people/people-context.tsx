@@ -2,7 +2,6 @@
 
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import type { Member, User } from "@/lib/types";
-import { PersonSheet } from "./person-sheet";
 
 /** What a message author carries, used until (or instead of) the member record. */
 export type PersonFallback = { uid: string; name: string; photoUrl?: string };
@@ -13,7 +12,10 @@ type Value = {
   get: (uid: string) => Member | null | undefined;
   /** Fetches a member not yet known. Safe to call repeatedly. */
   load: (uid: string) => void;
+  /** The profile open in the side panel, if any. */
+  sheet: PersonFallback | null;
   openSheet: (person: PersonFallback) => void;
+  closeSheet: () => void;
 };
 
 const PeopleContext = createContext<Value | null>(null);
@@ -63,12 +65,15 @@ export function PeopleProvider({
     [api, known, fetched],
   );
 
-  const value = useMemo(() => ({ me, get, load, openSheet: setSheet }), [me, get, load]);
+  const closeSheet = useCallback(() => setSheet(null), []);
+  const value = useMemo(
+    () => ({ me, get, load, sheet, openSheet: setSheet, closeSheet }),
+    [me, get, load, sheet, closeSheet],
+  );
 
   return (
     <PeopleContext.Provider value={value}>
       {children}
-      {sheet ? <PersonSheet person={sheet} onClose={() => setSheet(null)} /> : null}
     </PeopleContext.Provider>
   );
 }
