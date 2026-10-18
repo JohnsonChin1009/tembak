@@ -6,7 +6,7 @@ import type { MemberOnboarding, OnboardingPatch, OnboardingStep } from "@/lib/ty
 
 export type OnboardingInit = {
   state: MemberOnboarding;
-  /** Show the getting-started checklist (team workspaces, not the demo). */
+  /** Guide new members in #getting-started (team workspaces, not the demo). */
   checklist: boolean;
   /** Someone else is already in the workspace, which counts as "invite a teammate". */
   teamJoined: boolean;
@@ -14,12 +14,7 @@ export type OnboardingInit = {
 
 type Value = {
   checklist: boolean;
-  dismissed: boolean;
-  /** Steps that apply to this member; only owners get "invite". */
-  steps: OnboardingStep[];
-  isDone: (step: OnboardingStep) => boolean;
   record: (step: OnboardingStep) => void;
-  dismiss: () => void;
   hintSeen: (id: string) => boolean;
   markHint: (id: string) => void;
   inviteOpen: boolean;
@@ -28,10 +23,8 @@ type Value = {
 
 const OnboardingContext = createContext<Value | null>(null);
 
-const ALL_STEPS: OnboardingStep[] = ["mention", "preview", "revise", "publish", "invite"];
-
 export function OnboardingProvider({ init, children }: { init: OnboardingInit; children: React.ReactNode }) {
-  const { api, workspace } = useWorkspace();
+  const { api } = useWorkspace();
   const [state, setState] = useState(init.state);
   const [inviteOpen, setInviteOpen] = useState(false);
 
@@ -51,17 +44,10 @@ export function OnboardingProvider({ init, children }: { init: OnboardingInit; c
     const isDone = (step: OnboardingStep) => !!state.steps[step] || (step === "invite" && init.teamJoined);
     return {
       checklist: init.checklist,
-      dismissed: !!state.dismissed,
-      steps: workspace.role === "owner" ? ALL_STEPS : ALL_STEPS.filter((s) => s !== "invite"),
-      isDone,
       record(step) {
         if (isDone(step)) return;
         setState((s) => ({ ...s, steps: { ...s.steps, [step]: Date.now() } }));
         save({ step });
-      },
-      dismiss() {
-        setState((s) => ({ ...s, dismissed: true }));
-        save({ dismissed: true });
       },
       hintSeen: (id) => state.hints.includes(id),
       markHint(id) {
@@ -72,7 +58,7 @@ export function OnboardingProvider({ init, children }: { init: OnboardingInit; c
       inviteOpen,
       setInviteOpen,
     };
-  }, [state, init.checklist, init.teamJoined, workspace.role, inviteOpen, save]);
+  }, [state, init.checklist, init.teamJoined, inviteOpen, save]);
 
   return <OnboardingContext.Provider value={value}>{children}</OnboardingContext.Provider>;
 }
