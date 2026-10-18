@@ -1,8 +1,20 @@
 import "server-only";
+import { seal } from "@/lib/crypto";
 import { kebab, randomId } from "@/lib/ids";
 import { getStore } from "@/lib/store";
 import type { Source, SourceConfig } from "@/lib/types";
 import { fetchRows, parseSheetUrl } from "./fetch";
+
+/** Fetches without saving, for the dialog's "Test connection". */
+export async function previewSource(workspaceId: string, config: SourceConfig) {
+  const rows = await fetchRows(config, workspaceId);
+  return { columns: Object.keys(rows[0] ?? {}), sample: rows.slice(0, 5), rowCount: rows.length };
+}
+
+/** Secrets in a source config are encrypted before they're stored. */
+function sealConfig(config: SourceConfig): SourceConfig {
+  return config.kind === "json" && config.headerValue ? { ...config, headerValue: seal(config.headerValue) } : config;
+}
 
 /** Test-fetches the config, then stores the source with its columns and a few sample rows. */
 export async function createSource(input: {
@@ -11,7 +23,7 @@ export async function createSource(input: {
   config: SourceConfig;
   createdBy: string;
 }): Promise<Source> {
-  const rows = await fetchRows(input.config);
+  const rows = await fetchRows(input.config, input.workspaceId);
   const store = await getStore();
   const taken = new Set((await store.listSources(input.workspaceId)).map((s) => s.key));
   let key = kebab(input.name, 24).replace(/-/g, "_");
@@ -23,7 +35,7 @@ export async function createSource(input: {
     key,
     name: input.name.trim().slice(0, 80),
     kind: input.config.kind,
-    config: input.config,
+    config: sealConfig(input.config),
     columns: Object.keys(rows[0] ?? {}),
     sample: rows.slice(0, 3),
     rowCount: rows.length,

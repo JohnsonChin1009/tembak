@@ -6,8 +6,11 @@ import type {
   AppVersion,
   AppVersionMeta,
   Channel,
+  Connection,
+  ConnectionProvider,
   Member,
   Message,
+  Skill,
   Source,
   User,
   Workspace,
@@ -217,5 +220,30 @@ export class FirestoreStore implements Store {
   }
   async deleteSource(workspaceId: string, id: string) {
     await this.sourcesCol(workspaceId).doc(id).delete();
+  }
+
+  async listConnections(workspaceId: string) {
+    const snap = await this.ws(workspaceId).collection("connections").get();
+    return snap.docs.map((d) => d.data() as Connection);
+  }
+  async getConnection(workspaceId: string, provider: ConnectionProvider) {
+    return as<Connection>((await this.ws(workspaceId).collection("connections").doc(provider).get()).data());
+  }
+  async upsertConnection(connection: Connection) {
+    await this.ws(connection.workspaceId).collection("connections").doc(connection.provider).set(connection);
+  }
+  async deleteConnection(workspaceId: string, provider: ConnectionProvider) {
+    await this.ws(workspaceId).collection("connections").doc(provider).delete();
+  }
+
+  async listSkills(workspaceId: string) {
+    const snap = await this.ws(workspaceId).collection("skills").get();
+    return snap.docs.map((d) => d.data() as Skill).sort((a, b) => a.name.localeCompare(b.name));
+  }
+  async upsertSkill(skill: Skill) {
+    await this.ws(skill.workspaceId).collection("skills").doc(skill.id).set(skill);
+  }
+  async deleteSkill(workspaceId: string, id: string) {
+    await this.ws(workspaceId).collection("skills").doc(id).delete();
   }
 }

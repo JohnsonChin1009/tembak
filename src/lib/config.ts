@@ -32,13 +32,26 @@ const schema = z.object({
   FIREBASE_AUTH_DOMAIN: z.string().optional(),
   FIREBASE_PROJECT_ID: z.string().optional(),
   SERVICE_ACCOUNT_EMAIL: z.string().optional(),
+  // OAuth apps for the Notion and Linear connectors. Unset = API-key fallback only.
+  NOTION_OAUTH_CLIENT_ID: z.string().optional(),
+  NOTION_OAUTH_CLIENT_SECRET: z.string().optional(),
+  LINEAR_OAUTH_CLIENT_ID: z.string().optional(),
+  LINEAR_OAUTH_CLIENT_SECRET: z.string().optional(),
 });
+
+// setup-gcp.sh stores "unset" for secrets that weren't provided.
+const present = (v: string | undefined) => (v && v !== "unset" ? v : undefined);
+
+function oauthApp(id: string | undefined, secret: string | undefined) {
+  const clientId = present(id);
+  const clientSecret = present(secret);
+  return clientId && clientSecret ? { clientId, clientSecret } : null;
+}
 
 function load() {
   const env = schema.parse(process.env);
   const useVertex = env.GOOGLE_GENAI_USE_VERTEXAI === "true";
-  // setup-gcp.sh stores "unset" when no key was provided.
-  const apiKey = env.GEMINI_API_KEY && env.GEMINI_API_KEY !== "unset" ? env.GEMINI_API_KEY : undefined;
+  const apiKey = present(env.GEMINI_API_KEY);
   const agentMode = env.AGENT_MODE ?? (apiKey || useVertex ? "gemini" : "mock");
   const appUrl = env.APP_URL.replace(/\/$/, "");
   const appsUrl = (env.APPS_URL ?? appUrl).replace(/\/$/, "");
@@ -78,6 +91,10 @@ function load() {
         }
       : null,
     serviceAccountEmail: env.SERVICE_ACCOUNT_EMAIL,
+    oauth: {
+      notion: oauthApp(env.NOTION_OAUTH_CLIENT_ID, env.NOTION_OAUTH_CLIENT_SECRET),
+      linear: oauthApp(env.LINEAR_OAUTH_CLIENT_ID, env.LINEAR_OAUTH_CLIENT_SECRET),
+    },
   };
 }
 

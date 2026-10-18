@@ -4,8 +4,11 @@ import type {
   AppVersion,
   AppVersionMeta,
   Channel,
+  Connection,
+  ConnectionProvider,
   Member,
   Message,
+  Skill,
   Source,
   User,
   Workspace,
@@ -28,6 +31,8 @@ export class MemoryStore implements Store {
   private versions = new Map<string, AppVersion[]>();
   private sources = new Map<string, Source>();
   private kv = new Map<string, unknown>();
+  private connections = new Map<string, Connection>();
+  private skills = new Map<string, Skill>();
   private bus = new EventEmitter().setMaxListeners(0);
 
   async upsertUser(user: User) {
@@ -203,5 +208,30 @@ export class MemoryStore implements Store {
   }
   async deleteSource(workspaceId: string, id: string) {
     if (this.sources.get(id)?.workspaceId === workspaceId) this.sources.delete(id);
+  }
+
+  async listConnections(workspaceId: string) {
+    return [...this.connections.values()].filter((c) => c.workspaceId === workspaceId);
+  }
+  async getConnection(workspaceId: string, provider: ConnectionProvider) {
+    return this.connections.get(k(workspaceId, provider)) ?? null;
+  }
+  async upsertConnection(connection: Connection) {
+    this.connections.set(k(connection.workspaceId, connection.provider), connection);
+  }
+  async deleteConnection(workspaceId: string, provider: ConnectionProvider) {
+    this.connections.delete(k(workspaceId, provider));
+  }
+
+  async listSkills(workspaceId: string) {
+    return [...this.skills.values()]
+      .filter((s) => s.workspaceId === workspaceId)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+  async upsertSkill(skill: Skill) {
+    this.skills.set(k(skill.workspaceId, skill.id), skill);
+  }
+  async deleteSkill(workspaceId: string, id: string) {
+    this.skills.delete(k(workspaceId, id));
   }
 }

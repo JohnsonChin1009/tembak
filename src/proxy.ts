@@ -34,7 +34,8 @@ export function proxy(req: NextRequest) {
 
   // Optimistic check only; route handlers and pages verify the session.
   if (!req.cookies.has("tembak_session")) {
-    if (pathname.startsWith("/api/")) {
+    // OAuth callbacks are browser navigations: send people to sign in, then back.
+    if (pathname.startsWith("/api/") && !pathname.startsWith("/api/oauth/")) {
       return NextResponse.json({ error: "Sign in required" }, { status: 401 });
     }
     const url = req.nextUrl.clone();
