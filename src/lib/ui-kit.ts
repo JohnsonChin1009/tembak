@@ -506,4 +506,6 @@ function download(filename, rows){
 }
 
 T.ui = { h: h, clear: clear, theme: theme, format: format, kpis: kpis, chart: chart, table: table, select: select, segmented: segmented, form: form, avatar: avatar, tabs: tabs, loading: loading, error: error, empty: empty, collection: collection, download: download, sum: sum, avg: avg, group: group, uniq: uniq, week: byWeek, month: byMonth };
+// Generated code often writes ui.x without "const ui = tembak.ui"; without this it dies on load.
+if (!("ui" in window)) window.ui = T.ui;
 })();`;
