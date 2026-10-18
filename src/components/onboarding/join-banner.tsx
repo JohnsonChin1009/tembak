@@ -1,15 +1,27 @@
 "use client";
 
 import { ArrowRight, PartyPopper, X } from "lucide-react";
+import { useEffect, useEffectEvent } from "react";
 import { useWorkspace } from "@/components/workspace/workspace-context";
 import type { App } from "@/lib/types";
 import { useOnboarding } from "./onboarding-context";
 
-/** Shown once to someone who joined a team workspace by invite. */
+const AUTO_DISMISS_MS = 10_000;
+
+/** Shown once to someone who joined a team workspace by invite; dismisses itself after 10s. */
 export function JoinBanner({ apps, onOpenApp }: { apps: App[]; onOpenApp: (app: App) => void }) {
   const onboarding = useOnboarding();
   const { workspace } = useWorkspace();
-  if (!onboarding || workspace.open || workspace.role === "owner" || onboarding.hintSeen("joined")) return null;
+  const visible = !!onboarding && !workspace.open && workspace.role !== "owner" && !onboarding.hintSeen("joined");
+  const autoDismiss = useEffectEvent(() => onboarding?.markHint("joined"));
+
+  useEffect(() => {
+    if (!visible) return;
+    const timer = setTimeout(autoDismiss, AUTO_DISMISS_MS);
+    return () => clearTimeout(timer);
+  }, [visible]);
+
+  if (!onboarding || !visible) return null;
   const latest = [...apps].sort((a, b) => b.updatedAt - a.updatedAt)[0];
 
   return (
