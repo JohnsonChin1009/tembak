@@ -5,15 +5,21 @@ import type { Source, SourceConfig } from "@/lib/types";
 import { fetchRows, parseSheetUrl } from "./fetch";
 
 /** Test-fetches the config, then stores the source with its columns and a few sample rows. */
-export async function createSource(input: { name: string; config: SourceConfig; createdBy: string }): Promise<Source> {
+export async function createSource(input: {
+  workspaceId: string;
+  name: string;
+  config: SourceConfig;
+  createdBy: string;
+}): Promise<Source> {
   const rows = await fetchRows(input.config);
   const store = await getStore();
-  const taken = new Set((await store.listSources()).map((s) => s.key));
+  const taken = new Set((await store.listSources(input.workspaceId)).map((s) => s.key));
   let key = kebab(input.name, 24).replace(/-/g, "_");
   for (let i = 2; taken.has(key); i++) key = `${kebab(input.name, 20).replace(/-/g, "_")}_${i}`;
 
   const source: Source = {
     id: randomId(),
+    workspaceId: input.workspaceId,
     key,
     name: input.name.trim().slice(0, 80),
     kind: input.config.kind,
@@ -45,11 +51,15 @@ const SHEET_URL_RE = /https:\/\/docs\.google\.com\/spreadsheets\/d\/[^\s>)]+/g;
  * Turns Google Sheets links pasted in a message into data sources, so
  * "@tembak build a dashboard from <sheet link>" just works.
  */
-export async function sourcesFromMessage(text: string, createdBy: string): Promise<{ created: Source[]; failed: string[] }> {
+export async function sourcesFromMessage(
+  workspaceId: string,
+  text: string,
+  createdBy: string,
+): Promise<{ created: Source[]; failed: string[] }> {
   const urls = [...new Set(text.match(SHEET_URL_RE) ?? [])];
   if (!urls.length) return { created: [], failed: [] };
   const store = await getStore();
-  const existing = await store.listSources();
+  const existing = await store.listSources(workspaceId);
   const created: Source[] = [];
   const failed: string[] = [];
   for (const url of urls) {
@@ -57,7 +67,9 @@ export async function sourcesFromMessage(text: string, createdBy: string): Promi
     if (!id) continue;
     if (existing.some((s) => s.config.kind === "sheet" && parseSheetUrl(s.config.url)?.id === id)) continue;
     try {
-      created.push(await createSource({ name: `Sheet ${id.slice(0, 6)}`, config: { kind: "sheet", url }, createdBy }));
+      created.push(
+        await createSource({ workspaceId, name: `Sheet ${id.slice(0, 6)}`, config: { kind: "sheet", url }, createdBy }),
+      );
     } catch {
       failed.push(url);
     }

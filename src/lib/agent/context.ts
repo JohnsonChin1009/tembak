@@ -32,9 +32,9 @@ function line(m: Message, apps: Map<string, App>): string | null {
 export async function buildContext(trigger: Message): Promise<AgentContext> {
   const store = await getStore();
   const [history, allApps, sources] = await Promise.all([
-    store.listMessages(trigger.channelId, HISTORY + 5),
-    store.listApps(),
-    store.listSources(),
+    store.listMessages(trigger.workspaceId, trigger.channelId, HISTORY + 5),
+    store.listApps(trigger.workspaceId),
+    store.listSources(trigger.workspaceId),
   ]);
   const channelApps = allApps.filter((a) => a.channelId === trigger.channelId);
   const appsById = new Map(allApps.map((a) => [a.id, a]));
