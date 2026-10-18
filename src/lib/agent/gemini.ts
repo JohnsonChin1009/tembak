@@ -62,7 +62,8 @@ export function generateText(call: Call): Promise<string> {
 function friendlyError(err: unknown): Error {
   const raw = err instanceof Error ? err.message : String(err);
   const status = (err as { status?: number }).status;
-  if (status === 402 || /prepayment|billing/i.test(raw)) {
+  console.error("[gemini] call failed", status ?? "", raw.slice(0, 500));
+  if (status === 402 || /prepayment/i.test(raw)) {
     return new Error("Gemini is out of credits for this API key. Top up in AI Studio or switch to a free-tier key.");
   }
   if (status === 429 || /RESOURCE_EXHAUSTED|quota/i.test(raw)) {
