@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Tembak",
-  description: "Talk it through with your team, then ship the app. Disposable software, built from conversation.",
+  description: "One tag. One shot. One flow. Your team talks it through, tags @tembak, and gets a working app in one shot.",
 };
 
 export const viewport: Viewport = {

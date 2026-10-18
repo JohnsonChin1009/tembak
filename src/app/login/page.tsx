@@ -18,19 +18,19 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
 
         <div className="relative mt-8 max-w-lg lg:my-auto lg:pt-12">
           <h1 className="text-[2rem] font-semibold leading-[1.05] tracking-tight text-balance sm:text-4xl lg:text-5xl">
-            Talk it through.
+            One tag. One shot.
             <br />
-            <span className="text-muted">Then ship the app.</span>
+            <span className="text-muted">One flow.</span>
           </h1>
           <p className="mt-6 hidden text-base leading-relaxed text-muted lg:block">
-            Tembak is a team chat that builds software. When the conversation has enough context, tag{" "}
-            <span className="rounded bg-accent-dim px-1.5 py-0.5 font-medium text-accent">@tembak</span> and get a
-            working dashboard, tracker, or tool, live on a link, in about a minute.
+            Tembak is a team chat that builds software. Your whole team talks it through, one person tags{" "}
+            <span className="rounded bg-accent-dim px-1.5 py-0.5 font-medium text-accent">@tembak</span>, and a
+            working dashboard, tracker, or tool comes back in one shot, live on a link.
           </p>
           <ChatDemo />
         </div>
 
-        <p className="relative mt-10 hidden text-sm text-muted lg:block">Disposable software, built from conversation.</p>
+        <p className="relative mt-10 hidden text-sm text-muted lg:block">Multiplayer apps, built in one shot.</p>
       </section>
 
       <section className="flex justify-center px-6 pt-6 pb-12 lg:items-center lg:p-6">

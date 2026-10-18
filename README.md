@@ -1,11 +1,11 @@
 # Tembak
 
-**Talk it through. Then ship the app.**
+**One tag. One shot. One flow.**
 
-Tembak is a team chat that builds software. When a conversation has enough
-context, anyone can tag `@tembak` and Gemini builds a small, single-purpose app
-(a dashboard, a tracker, a calculator, a form) from what the team said. It
-previews next to the chat and publishes to a live link in one click.
+Tembak is a multiplayer team chat that builds software. When a conversation has
+enough context, anyone can tag `@tembak` and Gemini builds a small, single-purpose
+app (a dashboard, a tracker, a calculator, a form) from what the team said, in one
+shot. It previews next to the chat and publishes to a live link in one click.
 
 *Tembak* is Malay for "to shoot". Built for the Google AI Builder Cup.
 
