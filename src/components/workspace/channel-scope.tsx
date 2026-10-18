@@ -8,17 +8,18 @@ import { ChannelView } from "@/components/chat/channel-view";
 import { useChannel, type ChannelMessage } from "@/components/chat/use-channel";
 import type { App, AppRef, Channel, Message, User } from "@/lib/types";
 import { usePanelWidth } from "./use-panel-width";
+import { useWorkspace } from "./workspace-context";
 
 export type OpenApp = { appId: string; version?: number };
 
-function setUrl(channelId: string, open: OpenApp | null) {
+function setUrl(base: string, channelId: string, open: OpenApp | null) {
   const params = new URLSearchParams();
   if (open) {
     params.set("app", open.appId);
     if (open.version) params.set("v", String(open.version));
   }
   const qs = params.toString();
-  window.history.replaceState(null, "", `/c/${channelId}${qs ? `?${qs}` : ""}`);
+  window.history.replaceState(null, "", `${base}/c/${channelId}${qs ? `?${qs}` : ""}`);
 }
 
 /** One channel: chat on the left, builder panel on the right. Keyed by channel id. */
@@ -44,6 +45,7 @@ export function ChannelScope({
   onAppsStale: () => void;
   renderPanelActions?: (app: App, version: number) => React.ReactNode;
 }) {
+  const { base } = useWorkspace();
   const [open, setOpenState] = useState<OpenApp | null>(initialOpen);
   const [handledRequest, setHandledRequest] = useState(openRequest?.nonce);
   if (openRequest && openRequest.nonce !== handledRequest) {
@@ -54,8 +56,8 @@ export function ChannelScope({
   const appsById = new Map(apps.map((a) => [a.id, a]));
   const setOpen = setOpenState;
   useEffect(() => {
-    setUrl(channel.id, open);
-  }, [channel.id, open]);
+    setUrl(base, channel.id, open);
+  }, [base, channel.id, open]);
 
   // Live updates: refresh app metadata when the agent ships a version, and
   // auto-open the panel for the person who asked. Refs give the SSE callback

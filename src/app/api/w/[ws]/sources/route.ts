@@ -1,12 +1,13 @@
 import { z } from "zod";
-import { handle, HttpError, json, parseBody, requireUser } from "@/lib/api";
+import { handle, HttpError, json, parseBody } from "@/lib/api";
 import { SourceFetchError } from "@/lib/data/fetch";
 import { createSource, redact } from "@/lib/data/sources";
 import { getStore } from "@/lib/store";
+import { requireMember } from "@/lib/workspaces";
 
-export const GET = handle(async () => {
-  await requireUser();
-  return json((await (await getStore()).listSources()).map(redact));
+export const GET = handle(async (_req: Request, ctx: RouteContext<"/api/w/[ws]/sources">) => {
+  const { workspace } = await requireMember((await ctx.params).ws);
+  return json((await (await getStore()).listSources(workspace.id)).map(redact));
 });
 
 const body = z.object({
@@ -23,11 +24,11 @@ const body = z.object({
   ]),
 });
 
-export const POST = handle(async (req: Request) => {
-  const user = await requireUser();
+export const POST = handle(async (req: Request, ctx: RouteContext<"/api/w/[ws]/sources">) => {
+  const { user, workspace } = await requireMember((await ctx.params).ws);
   const input = await parseBody(req, body);
   try {
-    const source = await createSource({ ...input, createdBy: user.uid });
+    const source = await createSource({ ...input, workspaceId: workspace.id, createdBy: user.uid });
     return json(redact(source), { status: 201 });
   } catch (err) {
     if (err instanceof SourceFetchError) throw new HttpError(422, err.message);

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import clsx from "clsx";
 import { Check, Copy, Database, FileSpreadsheet, Globe, LoaderCircle, Trash2, X } from "lucide-react";
+import { useWorkspace } from "@/components/workspace/workspace-context";
 import type { Source } from "@/lib/types";
 
 type Tab = "sheet" | "csv" | "json";
@@ -39,6 +40,7 @@ export function AddDataDialog({
   onClose: () => void;
   onCreated: (s: Source) => void;
 }) {
+  const { api } = useWorkspace();
   const [tab, setTab] = useState<Tab>("sheet");
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
@@ -60,7 +62,7 @@ export function AddDataDialog({
           ? { kind: "csv", text: csv }
           : { kind: "json", url, headerName: headerName || undefined, headerValue: headerValue || undefined };
     try {
-      const res = await fetch("/api/sources", {
+      const res = await fetch(`${api}/sources`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name: name || defaultName(tab), config }),
@@ -248,10 +250,11 @@ export function SourceDialog({
   onClose: () => void;
   onDeleted: (id: string) => void;
 }) {
+  const { api } = useWorkspace();
   const [busy, setBusy] = useState(false);
   async function remove() {
     setBusy(true);
-    const res = await fetch(`/api/sources/${source.id}`, { method: "DELETE" });
+    const res = await fetch(`${api}/sources/${source.id}`, { method: "DELETE" });
     setBusy(false);
     if (res.ok) onDeleted(source.id);
   }

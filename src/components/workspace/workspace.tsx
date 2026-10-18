@@ -6,21 +6,16 @@ import { useRouter } from "next/navigation";
 import { AppWindow } from "lucide-react";
 import { PublishControls } from "@/components/builder/publish-controls";
 import { DataSection } from "@/components/data/data-section";
-import type { App, Channel, Source, User } from "@/lib/types";
+import type { App, Channel, Source, User, WorkspaceInfo } from "@/lib/types";
 import { ChannelScope, type OpenApp } from "./channel-scope";
 import { Section, Sidebar } from "./sidebar";
+import { WorkspaceProvider } from "./workspace-context";
+import type { WorkspaceLink } from "./workspace-menu";
 
-export function Workspace({
-  user,
-  channels: initialChannels,
-  apps: initialApps,
-  sources: initialSources,
-  channelId,
-  appsUrl,
-  serviceAccountEmail,
-  initialOpen,
-}: {
+type Props = {
   user: User;
+  workspace: WorkspaceInfo;
+  workspaces: WorkspaceLink[];
   channels: Channel[];
   apps: App[];
   sources: Source[];
@@ -29,8 +24,31 @@ export function Workspace({
   serviceAccountEmail?: string;
   agentMode: "mock" | "gemini";
   initialOpen: OpenApp | null;
-}) {
+};
+
+export function Workspace(props: Props) {
+  return (
+    <WorkspaceProvider workspace={props.workspace}>
+      <WorkspaceShell {...props} />
+    </WorkspaceProvider>
+  );
+}
+
+function WorkspaceShell({
+  user,
+  workspace,
+  workspaces,
+  channels: initialChannels,
+  apps: initialApps,
+  sources: initialSources,
+  channelId,
+  appsUrl,
+  serviceAccountEmail,
+  initialOpen,
+}: Props) {
   const router = useRouter();
+  const base = `/w/${encodeURIComponent(workspace.slug)}`;
+  const api = `/api${base}`;
   const [channels, setChannels] = useState(initialChannels);
   const [apps, setApps] = useState(initialApps);
   const [sources, setSources] = useState(initialSources);
@@ -39,12 +57,12 @@ export function Workspace({
   const channel = channels.find((c) => c.id === channelId);
 
   const refreshApps = useCallback(async () => {
-    const res = await fetch("/api/apps");
+    const res = await fetch(`${api}/apps`);
     if (res.ok) setApps((await res.json()) as App[]);
-  }, []);
+  }, [api]);
 
   async function createChannel(name: string) {
-    const res = await fetch("/api/channels", {
+    const res = await fetch(`${api}/channels`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ name }),
@@ -52,7 +70,7 @@ export function Workspace({
     if (!res.ok) return;
     const created = (await res.json()) as Channel;
     setChannels((cs) => [...cs.filter((c) => c.id !== created.id), created]);
-    router.push(`/c/${created.id}`);
+    router.push(`${base}/c/${created.id}`);
   }
 
   return (
@@ -64,13 +82,19 @@ export function Workspace({
           if ((e.target as HTMLElement).closest("a")) setNavOpen(false);
         }}
       >
-        <Sidebar user={user} channels={channels} channelId={channelId} onCreateChannel={createChannel}>
+        <Sidebar
+          user={user}
+          workspaces={workspaces}
+          channels={channels}
+          channelId={channelId}
+          onCreateChannel={createChannel}
+        >
           <Section title="Apps">
             {apps.length === 0 ? <p className="px-2 py-1 text-xs text-faint">Nothing built yet</p> : null}
             {apps.slice(0, 12).map((a) => (
               <Link
                 key={a.id}
-                href={`/c/${a.channelId}?app=${a.id}`}
+                href={`${base}/c/${a.channelId}?app=${a.id}`}
                 onClick={(e) => {
                   if (a.channelId !== channelId) return;
                   e.preventDefault();

@@ -6,23 +6,27 @@ import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import { Hash, LogOut, Plus } from "lucide-react";
 import { Avatar } from "@/components/avatar";
-import { Logo } from "@/components/logo";
 import type { Channel, User } from "@/lib/types";
+import { useWorkspace } from "./workspace-context";
+import { WorkspaceMenu, type WorkspaceLink } from "./workspace-menu";
 
 export function Sidebar({
   user,
+  workspaces,
   channels,
   channelId,
   onCreateChannel,
   children,
 }: {
   user: User;
+  workspaces: WorkspaceLink[];
   channels: Channel[];
   channelId: string;
   onCreateChannel: (name: string) => Promise<void>;
   children?: React.ReactNode;
 }) {
   const router = useRouter();
+  const { base } = useWorkspace();
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
 
@@ -42,8 +46,8 @@ export function Sidebar({
 
   return (
     <aside className="flex h-full w-64 shrink-0 flex-col border-r border-line bg-panel">
-      <div className="flex h-14 items-center border-b border-line px-4">
-        <Logo />
+      <div className="flex h-14 items-center border-b border-line px-2">
+        <WorkspaceMenu workspaces={workspaces} />
       </div>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-2 py-4">
@@ -62,7 +66,7 @@ export function Sidebar({
           {channels.map((c) => (
             <Link
               key={c.id}
-              href={`/c/${c.id}`}
+              href={`${base}/c/${c.id}`}
               className={clsx(
                 "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition",
                 c.id === channelId ? "bg-hover text-fg" : "text-muted hover:bg-hover/60 hover:text-fg",
