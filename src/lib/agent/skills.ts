@@ -63,6 +63,14 @@ Filters: team and cycle via ui.select.`,
 Views via ui.tabs: "This month" (a 7-column CSS grid month calendar placing titles on their date; days outside the month muted), "Pipeline" (columns per status listing titles), "All" (ui.table, title rendered as a link to notion_url).
 KPIs: scheduled this week, in progress, published this month.`,
   },
+  {
+    name: "ai-triage",
+    description: "Categorize rows (feedback, tickets, requests) with AI, saved, with a breakdown chart and table",
+    body: `Rows come from tembak.data(key) if a source is named, else a ui.form textarea to paste one item per line. Each row gets a stable key (its id column, or the text itself).
+Use const results = ui.collection("triage"); each item: { key, text, category, sentiment?, reason }. On load render saved results first; never call the AI on load.
+"Categorize with AI" .tk-btn-primary: take rows not yet in results, send them in batches of ~50 via tembak.ask("Assign each item one category from: <categories from the brief, or pick 4-8 short ones>. Return one entry per item.", { data: batch.map(r => ({ key, text })), json: true, schema: { type: "array", items: { type: "object", properties: { key: { type: "string" }, category: { type: "string" }, reason: { type: "string" } }, required: ["key", "category"] } } }). Show progress ("Categorizing 51-100 of 200") with ui.loading, add each batch to results as it returns, and stop with ui.error on rejection (keep what was saved).
+Then ui.kpis (total, categorized, top category), an hbar of count by category, and ui.table (text, category badge, reason) with a ui.select category filter and an Export CSV via ui.download. A small "Re-run" .tk-btn-ghost clears results (results.replace([])) after a second click to confirm.`,
+  },
 ];
 
 /** Built-ins merged with the workspace's own skills (same name overrides). */

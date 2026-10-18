@@ -16,7 +16,6 @@ await tembak.ask(prompt, { data?, json?: boolean, schema? })
 ```
 
 - `POST /api/runtime/[appId]/ask` `{ prompt, data?, json?, schema? }`, auth via `requireRuntimeCaller`.
-  Workspace mode only.
 - Model: `config().gemini.fastModel` (stays `gemini-3.5-flash-lite`, cost matters). Reuse the Gemini
   client in `src/lib/agent/gemini.ts`; add a plain `generate` helper there if one doesn't exist.
 - `json: true` sets `responseMimeType: "application/json"` (plus `responseSchema` when `schema` is given)
@@ -43,6 +42,6 @@ await tembak.ask(prompt, { data?, json?: boolean, schema? })
 
 - In the builder preview, an `ai-triage` app built from a feedback sheet categorizes rows and saves them;
   reopening shows saved results without new calls.
-- Public mode: `tembak.ask` rejects without a network call.
+- Without a valid app token (e.g. a removed member) `/ask` returns 401/403 before any model call.
 - Oversized data and rate-limit hits return friendly errors the app shows via `ui.error`.
 - `pnpm typecheck` and `pnpm lint` pass.
