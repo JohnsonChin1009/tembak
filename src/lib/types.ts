@@ -32,7 +32,19 @@ export type Member = {
   email?: string;
   photoUrl?: string;
   joinedAt: number;
+  onboarding?: MemberOnboarding;
 };
+
+export type OnboardingStep = "mention" | "preview" | "revise" | "publish" | "invite";
+
+/** Per-member first-run progress: checklist steps (timestamps) and hints already shown. */
+export type MemberOnboarding = {
+  dismissed?: boolean;
+  steps: Partial<Record<OnboardingStep, number>>;
+  hints: string[];
+};
+
+export type OnboardingPatch = { step?: OnboardingStep; hint?: string; dismissed?: boolean };
 
 /** What the client gets about the current workspace. */
 export type WorkspaceInfo = {
@@ -75,6 +87,8 @@ export type Message = {
   error?: string;
   /** Id of the user message that triggered this agent message. */
   replyTo?: string;
+  /** A button rendered under the message (seeded welcome messages). */
+  action?: "invite";
 };
 
 export type App = {

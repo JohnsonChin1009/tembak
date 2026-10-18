@@ -6,6 +6,7 @@ import type {
   Channel,
   Member,
   Message,
+  OnboardingPatch,
   Source,
   User,
   Workspace,
@@ -66,6 +67,16 @@ export class MemoryStore implements Store {
   }
   async listMembers(workspaceId: string) {
     return [...(this.members.get(workspaceId)?.values() ?? [])].sort((a, b) => a.joinedAt - b.joinedAt);
+  }
+  async updateOnboarding(workspaceId: string, uid: string, patch: OnboardingPatch) {
+    const member = this.members.get(workspaceId)?.get(uid);
+    if (!member) return;
+    const ob = member.onboarding ?? { steps: {}, hints: [] };
+    member.onboarding = {
+      dismissed: patch.dismissed ?? ob.dismissed,
+      steps: patch.step ? { ...ob.steps, [patch.step]: Date.now() } : ob.steps,
+      hints: patch.hint && !ob.hints.includes(patch.hint) ? [...ob.hints, patch.hint] : ob.hints,
+    };
   }
   async listWorkspacesForUser(uid: string) {
     const ids = this.users.get(uid)?.workspaceIds ?? [];

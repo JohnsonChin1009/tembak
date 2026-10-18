@@ -5,6 +5,7 @@ import type {
   Channel,
   Member,
   Message,
+  OnboardingPatch,
   Source,
   User,
   Workspace,
@@ -28,6 +29,8 @@ export interface Store {
   addMember(workspaceId: string, member: Member): Promise<void>;
   getMember(workspaceId: string, uid: string): Promise<Member | null>;
   listMembers(workspaceId: string): Promise<Member[]>;
+  /** Merges one onboarding change into the member (field-level, safe under concurrent calls). */
+  updateOnboarding(workspaceId: string, uid: string, patch: OnboardingPatch): Promise<void>;
   listWorkspacesForUser(uid: string): Promise<Workspace[]>;
   /** Deletes a workspace's channels, messages, sources, and apps. Keeps the workspace and members. */
   clearWorkspace(workspaceId: string): Promise<void>;

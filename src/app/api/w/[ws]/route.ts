@@ -10,6 +10,7 @@ export const GET = handle(async (_req: Request, ctx: RouteContext<"/api/w/[ws]">
     // Open workspaces don't need invites; anyone signed in can join.
     inviteUrl: m.workspace.open ? null : inviteUrl(m.workspace),
     canReset: m.workspace.id === DEMO_WORKSPACE_ID && m.role === "owner",
-    members,
+    // Onboarding progress is private to each member.
+    members: members.map((member) => ({ ...member, onboarding: undefined })),
   });
 });
