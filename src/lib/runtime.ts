@@ -1,6 +1,8 @@
 // The `window.tembak` runtime injected into every generated app, for preview
 // and for published pages. Pure string building so it works on client and server.
 
+import { UI_KIT_CSS, UI_KIT_JS } from "./ui-kit";
+
 export type RuntimeOptions = { appId: string; version: number; apiBase: string };
 
 export function runtimeScript({ appId, version, apiBase }: RuntimeOptions): string {
@@ -23,7 +25,7 @@ window.tembak = {
     set: function(key, value){ return req("/api/public/kv/" + enc(C.appId) + "/" + enc(key), { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ value: value }) }).then(function(){}); }
   }
 };
-})();</script>`;
+})();</script><style>${UI_KIT_CSS}</style><script>${UI_KIT_JS}</script>`;
 }
 
 /** Inserts the runtime as the first thing in <head> so app code can rely on it. */
