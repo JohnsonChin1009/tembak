@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { HttpError, parseBody } from "@/lib/api";
 import { randomId } from "@/lib/ids";
+import { taggedUids } from "@/lib/mentions";
 import { preflight, publicJson } from "@/lib/public-api";
 import { limit } from "@/lib/rate-limit";
 import { callerPerson, handleRuntime, requireRuntimeCaller } from "@/lib/runtime-auth";
@@ -62,5 +63,7 @@ export const POST = handleRuntime(async (req: Request, ctx: RouteContext<"/api/r
     threadId,
   };
   await store.addMessage(message);
+  // Tags were checked against members above.
+  await store.addMentions(workspaceId, app.channelId, taggedUids(text).filter((id) => id !== uid));
   return publicJson({ id: message.id, threadId: threadId ?? null }, { status: 201 });
 });

@@ -8,7 +8,7 @@ import { Hash, LogOut, Plus } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { usePeople } from "@/components/people/people-context";
 import { channelNameDraft } from "@/lib/ids";
-import type { Channel, User } from "@/lib/types";
+import type { Channel, UnreadMentions, User } from "@/lib/types";
 import { useWorkspace } from "./workspace-context";
 import { WorkspaceMenu, type WorkspaceLink } from "./workspace-menu";
 
@@ -17,6 +17,7 @@ export function Sidebar({
   workspaces,
   channels,
   channelId,
+  mentions = {},
   onCreateChannel,
   children,
 }: {
@@ -24,6 +25,8 @@ export function Sidebar({
   workspaces: WorkspaceLink[];
   channels: Channel[];
   channelId: string;
+  /** Unread tags of the signed-in member, by channel id. */
+  mentions?: UnreadMentions;
   onCreateChannel: (name: string) => Promise<void>;
   children?: React.ReactNode;
 }) {
@@ -66,19 +69,35 @@ export function Sidebar({
             </button>
           }
         >
-          {channels.map((c) => (
-            <Link
-              key={c.id}
-              href={`${base}/c/${c.id}`}
-              className={clsx(
-                "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition",
-                c.id === channelId ? "bg-hover text-fg" : "text-muted hover:bg-hover/60 hover:text-fg",
-              )}
-            >
-              <Hash className="size-3.5 text-faint" />
-              <span className="truncate">{c.name}</span>
-            </Link>
-          ))}
+          {channels.map((c) => {
+            const tagged = c.id === channelId ? 0 : (mentions[c.id] ?? 0);
+            return (
+              <Link
+                key={c.id}
+                href={`${base}/c/${c.id}`}
+                className={clsx(
+                  "flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition",
+                  c.id === channelId
+                    ? "bg-hover text-fg"
+                    : tagged
+                      ? "font-semibold text-fg hover:bg-hover/60"
+                      : "text-muted hover:bg-hover/60 hover:text-fg",
+                )}
+              >
+                <Hash className="size-3.5 shrink-0 text-faint" />
+                <span className="min-w-0 flex-1 truncate">{c.name}</span>
+                {tagged ? (
+                  <span
+                    className="shrink-0 rounded-full bg-accent px-1.5 text-[11px] leading-4 font-semibold text-accent-ink"
+                    title={`You were tagged ${tagged === 1 ? "once" : `${tagged} times`}`}
+                    aria-label={`${tagged} unread ${tagged === 1 ? "mention" : "mentions"}`}
+                  >
+                    {tagged > 99 ? "99+" : tagged}
+                  </span>
+                ) : null}
+              </Link>
+            );
+          })}
           {creating ? (
             <form onSubmit={submit} className="px-1 pt-1">
               <input
