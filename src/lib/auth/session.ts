@@ -4,8 +4,9 @@ import { cookies } from "next/headers";
 import { config } from "@/lib/config";
 import { adminAuth } from "@/lib/firebase-admin";
 import { kebab, randomId } from "@/lib/ids";
+import { applyProfile } from "@/lib/profile";
 import { getStore } from "@/lib/store";
-import type { User } from "@/lib/types";
+import type { Profile, User } from "@/lib/types";
 
 export const SESSION_COOKIE = "tembak_session";
 const MAX_AGE_S = 60 * 60 * 24 * 5;
@@ -53,14 +54,43 @@ async function decodeFirebase(token: string): Promise<User | null> {
   }
 }
 
-export async function userFromToken(token: string | undefined): Promise<User | null> {
+// Profile edits, cached briefly so every request doesn't read the user doc.
+// Cloud Run runs one instance, so invalidating here is enough.
+const profiles = new Map<string, { profile: Profile | undefined; until: number }>();
+
+async function storedProfile(uid: string): Promise<Profile | undefined> {
+  const hit = profiles.get(uid);
+  if (hit && hit.until > Date.now()) return hit.profile;
+  const profile = (await (await getStore()).getUser(uid))?.profile;
+  profiles.set(uid, { profile, until: Date.now() + 60_000 });
+  return profile;
+}
+
+export function forgetProfile(uid: string) {
+  profiles.delete(uid);
+}
+
+/** The signed-in identity as the token carries it, without profile edits. */
+async function accountFromToken(token: string | undefined): Promise<User | null> {
   if (!token) return null;
   return config().authMode === "firebase" ? decodeFirebase(token) : decodeDev(token);
+}
+
+export async function userFromToken(token: string | undefined): Promise<User | null> {
+  const account = await accountFromToken(token);
+  return account && applyProfile(account, await storedProfile(account.uid));
 }
 
 export async function getSessionUser(): Promise<User | null> {
   const jar = await cookies();
   return userFromToken(jar.get(SESSION_COOKIE)?.value);
+}
+
+/** For the profile page: the sign-in identity (to offer its photo back) and the stored profile. */
+export async function getSessionAccount(): Promise<{ account: User; profile: Profile } | null> {
+  const account = await accountFromToken((await cookies()).get(SESSION_COOKIE)?.value);
+  if (!account) return null;
+  return { account, profile: (await storedProfile(account.uid)) ?? {} };
 }
 
 function emailAllowed(email: string | undefined) {
@@ -94,7 +124,7 @@ export async function createSession(input: { name?: string; idToken?: string }):
       photoUrl: decoded.picture,
     };
     await store.upsertUser(user);
-    return { token, user };
+    return { token, user: applyProfile(user, await storedProfile(user.uid)) };
   }
 
   const name = input.name?.trim().slice(0, 40);

@@ -1,5 +1,6 @@
 import type {
   App,
+  Avatar,
   AppVersion,
   AppVersionMeta,
   Channel,
@@ -8,6 +9,7 @@ import type {
   Member,
   Message,
   OnboardingPatch,
+  Profile,
   Skill,
   Source,
   User,
@@ -22,6 +24,10 @@ export const DEMO_WORKSPACE_ID = "demo";
 export interface Store {
   upsertUser(user: User): Promise<void>;
   getUser(uid: string): Promise<User | null>;
+  /** Replaces the user's profile and copies the resolved name, title, and photo onto their memberships. */
+  setProfile(uid: string, profile: Profile, resolved: Pick<Member, "name" | "title" | "photoUrl">): Promise<void>;
+  getAvatar(uid: string): Promise<Avatar | null>;
+  setAvatar(uid: string, avatar: Avatar | null): Promise<void>;
 
   createWorkspace(workspace: Workspace): Promise<void>;
   getWorkspace(id: string): Promise<Workspace | null>;

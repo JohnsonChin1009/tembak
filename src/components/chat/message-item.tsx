@@ -6,6 +6,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Avatar } from "@/components/avatar";
 import { useOnboarding } from "@/components/onboarding/onboarding-context";
+import { usePerson } from "@/components/people/people-context";
+import { PersonTrigger } from "@/components/people/person-card";
 import type { AppRef } from "@/lib/types";
 import { RichText } from "./rich-text";
 import type { ChannelMessage } from "./use-channel";
@@ -23,7 +25,10 @@ export function MessageItem({
   renderAppRef?: (ref: AppRef, message: ChannelMessage) => React.ReactNode;
 }) {
   const isAgent = message.author.kind === "agent";
-  const name = message.author.kind === "agent" ? "Tembak" : message.author.name;
+  const author = message.author.kind === "user" ? message.author : null;
+  // Live profile when known; old messages otherwise keep the name they were sent with.
+  const person = usePerson(author ?? { uid: "agent", name: "Tembak" });
+  const name = isAgent ? "Tembak" : person.name;
   const time = timeFmt.format(message.createdAt);
 
   return (
@@ -39,19 +44,24 @@ export function MessageItem({
           <span className="invisible block pt-1 text-right font-mono text-[10px] text-faint group-hover:visible">
             {time}
           </span>
+        ) : author ? (
+          <PersonTrigger person={author} className="block">
+            <Avatar name={name} seed={author.uid} photoUrl={person.photoUrl} />
+          </PersonTrigger>
         ) : (
-          <Avatar
-            agent={isAgent}
-            name={name}
-            seed={message.author.kind === "user" ? message.author.uid : "agent"}
-            photoUrl={message.author.kind === "user" ? message.author.photoUrl : undefined}
-          />
+          <Avatar agent />
         )}
       </div>
       <div className="min-w-0 flex-1 text-[15px]">
         {!grouped ? (
           <div className="flex items-baseline gap-2">
-            <span className="font-semibold">{name}</span>
+            {author ? (
+              <PersonTrigger person={author}>
+                <span className="font-semibold hover:underline">{name}</span>
+              </PersonTrigger>
+            ) : (
+              <span className="font-semibold">{name}</span>
+            )}
             {isAgent ? (
               <span className="rounded bg-accent-dim px-1 py-px font-mono text-[10px] uppercase tracking-wider text-accent">
                 agent
