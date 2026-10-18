@@ -7,7 +7,8 @@ const APP_HOST = new URL(APP_URL).host;
 const APPS_HOST = new URL(APPS_URL).host;
 const SPLIT_HOSTS = APP_HOST !== APPS_HOST;
 
-const PUBLIC_PREFIXES = ["/a/", "/api/public/", "/api/session", "/login", "/_next/", "/favicon"];
+// /api/runtime/* is called from app iframes without cookies; it checks a bearer app token itself.
+const PUBLIC_PREFIXES = ["/a/", "/api/public/", "/api/runtime/", "/api/session", "/login", "/_next/", "/favicon"];
 
 function hostOf(req: NextRequest) {
   return req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? "";
@@ -18,8 +19,8 @@ export function proxy(req: NextRequest) {
   const host = hostOf(req);
 
   if (SPLIT_HOSTS && host === APPS_HOST) {
-    // The apps host only serves published apps and their data.
-    if (pathname.startsWith("/a/") || pathname.startsWith("/api/public/") || pathname.startsWith("/_next/")) {
+    // The apps host only serves published apps, their data, and the runtime API.
+    if (["/a/", "/api/public/", "/api/runtime/", "/_next/"].some((p) => pathname.startsWith(p))) {
       return NextResponse.next();
     }
     return new NextResponse("Not found", { status: 404 });

@@ -21,8 +21,9 @@ Filter: re-render everything from the filtered rows on change.`,
     name: "tracker",
     description: "Shared list people add to and update (tasks, requests, incidents) saved with kv",
     body: `Use const items = ui.collection("items") for persistence (shared by everyone who opens the app).
-Layout: header with counts per status as ui.kpis, a ui.form to add an item (wide title field, a status select, an owner field, a date if relevant), then a ui.segmented status filter and a ui.table.
-Table: columns with render functions for a status badge (.tk-badge) and row actions (a small .tk-btn-ghost "Done"/"Delete" calling items.update / items.remove, then re-render).
+Layout: header with counts per status as ui.kpis, a ui.form to add an item (wide title field, a status select, an owner field of type "member", a date if relevant), then a ui.segmented status filter and a ui.table.
+Created by: save created_by = (await tembak.me()).name on each new item. Add a "Mine" filter (owner or created_by equals me().name).
+Table: columns with render functions for a status badge (.tk-badge), the owner via ui.avatar(null, { name: owner }, { name: true }), and row actions (a small .tk-btn-ghost "Done"/"Delete" calling items.update / items.remove, then re-render).
 Seed: if the collection is empty on first load and the conversation mentions concrete items, add them once so the tracker isn't empty.`,
   },
   {
@@ -35,8 +36,8 @@ Validate required fields with the form's required flags. Never ask for passwords
   {
     name: "kanban",
     description: "Board with columns (To do, Doing, Done) and cards people move, saved with kv",
-    body: `Use const cards = ui.collection("cards"); each card has title, column, owner, due.
-Layout: header with an add-card ui.form (title + column select), then a CSS grid of columns (.tk-cols-3 or repeat(n, minmax(220px,1fr)) with horizontal scroll on mobile). Each column is a .tk-card listing cards; each card shows title, owner, due date and "←"/"→" .tk-btn-ghost buttons to move it (cards.update then re-render). Show the count per column in the column title.`,
+    body: `Use const cards = ui.collection("cards"); each card has title, column, owner, due, created_by.
+Layout: header with an add-card ui.form (title, column select, owner field of type "member"; save created_by = (await tembak.me()).name), then a CSS grid of columns (.tk-cols-3 or repeat(n, minmax(220px,1fr)) with horizontal scroll on mobile). Each column is a .tk-card listing cards; each card shows title, the owner with a small ui.avatar, due date and "←"/"→" .tk-btn-ghost buttons to move it (cards.update then re-render). Show the count per column in the column title.`,
   },
   {
     name: "report",
