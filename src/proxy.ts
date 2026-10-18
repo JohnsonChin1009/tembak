@@ -29,7 +29,8 @@ export function proxy(req: NextRequest) {
     return NextResponse.redirect(`${APPS_URL}${pathname}${search}`);
   }
 
-  if (PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))) return NextResponse.next();
+  // "/" is the landing page when signed out; the page itself redirects members.
+  if (pathname === "/" || PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))) return NextResponse.next();
 
   // Optimistic check only; route handlers and pages verify the session.
   if (!req.cookies.has("tembak_session")) {
@@ -38,7 +39,7 @@ export function proxy(req: NextRequest) {
     }
     const url = req.nextUrl.clone();
     url.pathname = "/login";
-    url.search = pathname === "/" ? "" : `?next=${encodeURIComponent(pathname + search)}`;
+    url.search = `?next=${encodeURIComponent(pathname + search)}`;
     return NextResponse.redirect(url);
   }
   return NextResponse.next();
