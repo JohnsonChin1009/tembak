@@ -38,6 +38,7 @@ env_vars() {
     "GOOGLE_CLOUD_LOCATION=${GOOGLE_CLOUD_LOCATION:-global}"
     "NOTION_OAUTH_CLIENT_ID=${NOTION_OAUTH_CLIENT_ID:-}"
     "LINEAR_OAUTH_CLIENT_ID=${LINEAR_OAUTH_CLIENT_ID:-}"
+    "WORKFLOW_DEFAULT_TZ=${WORKFLOW_DEFAULT_TZ:-Asia/Kuala_Lumpur}"
   )
   # gcloud's ^DELIM^ syntax lets values contain commas and @.
   local out="^##^" first=1
@@ -82,6 +83,57 @@ if [ -z "${APP_URL:-}" ]; then
   echo "==> Pointing APP_URL at ${URL}"
   gcloud run services update "$SERVICE" --project "$PROJECT_ID" --region "$REGION" \
     --update-env-vars "APP_URL=${URL},APPS_URL=${URL}" --quiet >/dev/null
+fi
+
+# --- Scheduled workflows (docs/prd/15-workflows.md) -----------------------------------
+# A second, private service from the same image with request-based billing: Cloud
+# Scheduler pings it every minute, and it costs only while a tick runs. The main service
+# keeps always-on CPU (needed for after() agent runs) but no CRON_SECRET, so its tick
+# endpoint stays disabled and pings never keep it awake.
+if gcloud secrets describe CRON_SECRET --project "$PROJECT_ID" >/dev/null 2>&1; then
+  CRON_SERVICE="${SERVICE}-cron"
+  IMAGE="$(gcloud run services describe "$SERVICE" --project "$PROJECT_ID" --region "$REGION" --format='value(spec.template.spec.containers[0].image)')"
+  LIVE_URL="${APP_URL:-$URL}"
+
+  echo "==> Deploying ${CRON_SERVICE} (same image, private, billed per request)"
+  gcloud run deploy "$CRON_SERVICE" \
+    --project "$PROJECT_ID" \
+    --region "$REGION" \
+    --image "$IMAGE" \
+    --service-account "$SA" \
+    --no-allow-unauthenticated \
+    --cpu-throttling \
+    --min-instances 0 \
+    --max-instances 1 \
+    --cpu 1 \
+    --memory 1Gi \
+    --concurrency 10 \
+    --timeout 300 \
+    --set-env-vars "$(env_vars "$LIVE_URL" "${APPS_URL:-$LIVE_URL}")" \
+    --set-secrets "${secrets},CRON_SECRET=CRON_SECRET:latest" \
+    --quiet
+
+  CRON_URL="$(gcloud run services describe "$CRON_SERVICE" --project "$PROJECT_ID" --region "$REGION" --format='value(status.url)')"
+  gcloud run services add-iam-policy-binding "$CRON_SERVICE" --project "$PROJECT_ID" --region "$REGION" \
+    --member "serviceAccount:${SA}" --role roles/run.invoker --quiet >/dev/null
+
+  CRON_SECRET_VALUE="$(gcloud secrets versions access latest --secret CRON_SECRET --project "$PROJECT_ID")"
+  JOB="${SERVICE}-tick"
+  job_flags=(
+    --project "$PROJECT_ID" --location "$REGION"
+    --schedule "* * * * *" --time-zone "UTC"
+    --uri "${CRON_URL}/api/cron/tick" --http-method POST
+    --oidc-service-account-email "$SA" --oidc-token-audience "$CRON_URL"
+    --attempt-deadline 300s
+  )
+  if gcloud scheduler jobs describe "$JOB" --project "$PROJECT_ID" --location "$REGION" >/dev/null 2>&1; then
+    gcloud scheduler jobs update http "$JOB" "${job_flags[@]}" --update-headers "x-cron-secret=${CRON_SECRET_VALUE}" --quiet >/dev/null
+  else
+    gcloud scheduler jobs create http "$JOB" "${job_flags[@]}" --headers "x-cron-secret=${CRON_SECRET_VALUE}" --quiet >/dev/null
+  fi
+  echo "==> Workflows: ${JOB} pings ${CRON_URL}/api/cron/tick every minute"
+else
+  echo "note: no CRON_SECRET secret, so scheduled workflows are off. Re-run ./scripts/setup-gcp.sh to enable them."
 fi
 
 cat <<EOF

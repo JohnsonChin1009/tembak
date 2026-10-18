@@ -119,6 +119,33 @@ export type Message = {
   thread?: ThreadSummary;
 };
 
+export type Weekday = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
+
+/** Presets rather than cron strings: easy for the agent to fill and to read back. `at` is "HH:MM". */
+export type WorkflowSchedule =
+  | { every: "hour" }
+  | { every: "day" | "weekday"; at: string }
+  | { every: "week"; day: Weekday; at: string };
+
+/** A saved, scheduled @tembak request (docs/prd/15-workflows.md). Top-level `workflows/{id}`. */
+export type Workflow = {
+  id: string;
+  workspaceId: string;
+  channelId: string;
+  /** What to do on each run, as if someone tagged Tembak with it. */
+  prompt: string;
+  schedule: WorkflowSchedule;
+  /** IANA time zone, e.g. "Asia/Kuala_Lumpur". */
+  tz: string;
+  createdBy: string;
+  createdByName: string;
+  createdAt: number;
+  nextRunAt: number;
+  /** Failed runs in a row; the workflow is removed after a few. */
+  failures: number;
+  lastRun?: { at: number; status: "done" | "error"; messageId: string };
+};
+
 /** Per-member count of unread tags of them, by channel id. Thread replies count for their channel. */
 export type UnreadMentions = Record<string, number>;
 

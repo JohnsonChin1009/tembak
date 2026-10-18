@@ -14,6 +14,7 @@ import type {
   Source,
   UnreadMentions,
   User,
+  Workflow,
   Workspace,
 } from "@/lib/types";
 import type { ActionRecord } from "@/lib/types";
@@ -115,4 +116,15 @@ export interface Store {
   addActionRecord(record: ActionRecord): Promise<void>;
   /** Most recent first. */
   listActionRecords(workspaceId: string, limit?: number): Promise<ActionRecord[]>;
+
+  /** Scheduled workflows, top level (`workflows/{id}`) so one query finds every due run. */
+  listWorkflows(workspaceId: string): Promise<Workflow[]>;
+  getWorkflow(id: string): Promise<Workflow | null>;
+  upsertWorkflow(workflow: Workflow): Promise<void>;
+  updateWorkflow(id: string, patch: Partial<Workflow>): Promise<void>;
+  deleteWorkflow(id: string): Promise<void>;
+  /** Across all workspaces, soonest first. */
+  listDueWorkflows(now: number, limit: number): Promise<Workflow[]>;
+  /** Sets `nextRunAt` only if it still equals `expected`. False means another tick got it first. */
+  claimWorkflow(id: string, expected: number, next: number): Promise<boolean>;
 }
