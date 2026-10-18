@@ -4,23 +4,11 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ImageUp, LoaderCircle, Trash2, Undo2 } from "lucide-react";
 import { Avatar } from "@/components/avatar";
-import { AVATAR_SIZE, NAME_MAX, TITLE_MAX } from "@/lib/profile";
+import { NAME_MAX, TITLE_MAX, toAvatarDataUrl } from "@/lib/profile";
 import type { User } from "@/lib/types";
 
 /** "account" restores the sign-in photo, "none" shows initials, a data URL uploads. */
 type PhotoChange = "account" | "none" | string;
-
-/** Center-crops and shrinks the picture in the browser so uploads stay small. */
-async function toAvatarDataUrl(file: File): Promise<string> {
-  const bitmap = await createImageBitmap(file);
-  const side = Math.min(bitmap.width, bitmap.height);
-  const canvas = document.createElement("canvas");
-  canvas.width = canvas.height = AVATAR_SIZE;
-  const ctx = canvas.getContext("2d")!;
-  ctx.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, AVATAR_SIZE, AVATAR_SIZE);
-  bitmap.close();
-  return canvas.toDataURL("image/jpeg", 0.85);
-}
 
 const input =
   "h-11 w-full rounded-lg border border-line-strong bg-raised px-3 text-fg outline-none transition placeholder:text-faint focus:border-accent";

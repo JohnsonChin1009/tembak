@@ -47,7 +47,8 @@ export default async function ChannelPage({ params, searchParams }: PageProps<"/
       agentMode={config().agentMode}
       initialOpen={appId ? { appId, version: v && v > 0 ? v : undefined } : null}
       onboarding={{
-        state: me?.onboarding ?? { steps: {}, hints: [] },
+        // Partial merge writes can leave either field missing in Firestore.
+        state: { ...me?.onboarding, steps: me?.onboarding?.steps ?? {}, hints: me?.onboarding?.hints ?? [] },
         checklist: !m.workspace.open,
         teamJoined: members.length > 1,
       }}

@@ -22,3 +22,15 @@ export function applyProfile(user: User, profile: Profile | undefined): User {
     photoUrl: profile.photoUrl === undefined ? base.photoUrl : profile.photoUrl || undefined,
   };
 }
+
+/** Browser only: center-crops and shrinks the picture so uploads stay small. */
+export async function toAvatarDataUrl(file: File): Promise<string> {
+  const bitmap = await createImageBitmap(file);
+  const side = Math.min(bitmap.width, bitmap.height);
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = AVATAR_SIZE;
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, AVATAR_SIZE, AVATAR_SIZE);
+  bitmap.close();
+  return canvas.toDataURL("image/jpeg", 0.85);
+}
