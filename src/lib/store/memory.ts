@@ -16,6 +16,7 @@ import type {
   User,
   Workspace,
 } from "@/lib/types";
+import type { ActionRecord } from "@/lib/types";
 import { nextThread } from "@/lib/threads";
 import { DEMO_WORKSPACE_ID, type MessageListener, type Store } from "./types";
 
@@ -40,6 +41,7 @@ export class MemoryStore implements Store {
   private kv = new Map<string, unknown>();
   private connections = new Map<string, Connection>();
   private skills = new Map<string, Skill>();
+  private actions = new Map<string, ActionRecord>();
   private bus = new EventEmitter().setMaxListeners(0);
 
   async upsertUser(user: User) {
@@ -126,6 +128,7 @@ export class MemoryStore implements Store {
     const prefix = `${workspaceId}/`;
     for (const key of [...this.connections.keys()]) if (key.startsWith(prefix)) this.connections.delete(key);
     for (const key of [...this.skills.keys()]) if (key.startsWith(prefix)) this.skills.delete(key);
+    for (const key of [...this.actions.keys()]) if (key.startsWith(prefix)) this.actions.delete(key);
     for (const uid of this.members.get(workspaceId)?.keys() ?? []) {
       const user = this.users.get(uid);
       if (!user) continue;
@@ -302,5 +305,15 @@ export class MemoryStore implements Store {
   }
   async deleteSkill(workspaceId: string, id: string) {
     this.skills.delete(k(workspaceId, id));
+  }
+
+  async addActionRecord(record: ActionRecord) {
+    this.actions.set(k(record.workspaceId, record.id), record);
+  }
+  async listActionRecords(workspaceId: string, limit = 50) {
+    return [...this.actions.values()]
+      .filter((a) => a.workspaceId === workspaceId)
+      .sort((a, b) => b.at - a.at)
+      .slice(0, limit);
   }
 }

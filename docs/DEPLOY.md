@@ -110,8 +110,11 @@ secrets from the last `deploy.sh` run and only swaps the image.
 Teams connect Notion and Linear from **Data → Add data**. With an OAuth app
 configured they see a **Connect Notion** / **Connect Linear** button (like
 Claude's connectors); without one, they paste an API key instead, which also
-works. Both are per workspace, read only, and stored encrypted (AES-256-GCM with
-a key derived from `SESSION_SECRET`; rotating it means reconnecting).
+works. Both are per workspace and stored encrypted (AES-256-GCM with a key
+derived from `SESSION_SECRET`; rotating it means reconnecting). Apps read them,
+and can write back through `tembak.action` (create and update Linear issues and
+Notion pages in the app's own databases). Every write is audited under
+`workspaces/{id}/actions` in Firestore.
 
 The redirect URIs to register, using your `APP_URL`:
 
@@ -132,8 +135,11 @@ the `*.run.app` URL). If `APP_URL` changes, update the redirect URIs too.
    policy URL, terms of use URL, and support email. For the hackathon, your
    landing page URL works for website, privacy, and terms.
 4. **Redirect URIs**: add the Notion callback above.
-5. Capabilities: **Read content** only (no insert/update), and no user
-   information beyond what's needed.
+5. Capabilities: **Read content**, **Insert content**, and **Update content**
+   (apps write back with `tembak.action`), and no user information beyond
+   what's needed. Without insert/update, writes fail with a message telling the
+   team to turn them on. API-key (internal integration) connections need the
+   same capabilities.
 6. Save, then copy the **OAuth client ID** and **OAuth client secret**.
 
 ### Linear (OAuth application)
@@ -141,9 +147,12 @@ the `*.run.app` URL). If `APP_URL` changes, update the redirect URIs too.
 1. In Linear: **Settings → API → OAuth applications → New OAuth application**.
 2. Name it Tembak, add the Linear callback above as the **Callback URL**, and
    save. Leave it private to your workspace unless others need it.
-3. Copy the **Client ID** and **Client secret**. Tembak asks for the `read`
-   scope only. Linear access tokens expire after 24 hours; Tembak refreshes them
-   automatically with the refresh token.
+3. Copy the **Client ID** and **Client secret**. Tembak asks for the
+   `read,write` scopes (apps create and update issues). Connections made while
+   it asked for `read` only keep read-only tokens: writes then say "Reconnect
+   Linear", and reconnecting from the Data panel fixes it. Personal API keys
+   already allow writes. Linear access tokens expire after 24 hours; Tembak
+   refreshes them automatically with the refresh token.
 
 ### Where the values go
 
@@ -183,6 +192,7 @@ connect anything, so visitors never attach their own Notion or Linear there.
 | Agent replies with a model error | Model ID not available to your key; change `GEMINI_MODEL` / `GEMINI_FAST_MODEL` and redeploy |
 | Agent stays on the mock dashboard | `GEMINI_API_KEY` secret is still `unset`; run `GEMINI_API_KEY=... ./scripts/setup-gcp.sh` then redeploy |
 | Sheet won't connect | Share it with `tembak@PROJECT.iam.gserviceaccount.com` as Viewer, or set "Anyone with the link" |
+| App says "Share this sheet with ... as an editor" | Apps that write rows (`tembak.action`) need the service account as **Editor** on the sheet; "Anyone with the link" sheets can be read but not written |
 | Connect Notion/Linear shows "Couldn't finish connecting" | The redirect URI registered with the provider doesn't match `APP_URL` exactly, or the client secret is still `unset`. Check `gcloud run services logs read tembak` for the `[oauth]` line |
 | "Notion couldn't find that database" | In Notion, open the database, then ••• → Connections → add Tembak |
 | Logs | `gcloud run services logs tail tembak --region asia-southeast1` (needs `gcloud components install beta`), or Cloud Run > tembak > Logs |

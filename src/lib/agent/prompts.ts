@@ -64,6 +64,25 @@ const RUNTIME_DOC = `DATA RUNTIME (window.tembak, already defined; don't define 
 - await tembak.post(text, { thread?: true }): posts a short message (1-1000 chars, simple markdown) to the app's channel, shown as from the app "via" the teammate. Only for meaningful events (a decision, a submitted approval, a summary the user chose to share), and only from an explicit user action like a "Share to channel" button: never on load, on a timer, or on every change. thread: true replies under the message that introduced the app. Disable the button while posting, then confirm with its label (e.g. "Shared ✓"); catch errors (e.g. too many posts) and show the message near the button.
 - await tembak.ask(prompt, { data?, json?: true, schema? }) -> string, or parsed JSON when json is true: a small AI call over data you pass (categorize, summarize, extract fields, draft a reply). The AI sees only prompt + data. Data max 60 KB (batch ~50 rows per call); rate-limited, so only call it from an explicit button ("Summarize", "Categorize"), never on load. Show ui.loading while waiting and ui.error on rejection. Save results with ui.collection or tembak.kv and show saved results on reopen instead of asking again.`;
 
+// tembak.action (PRD 14). Only the connected providers' lines go into a build
+// prompt, to save tokens; see availableActionProviders in src/lib/actions.
+const ACTION_DOCS = {
+  linear: `- "linear.createIssue" { teamKey, title, description?, priority? (0 none, 1 urgent .. 4 low), assigneeEmail?, labelNames?: [] } -> { id, identifier, url }
+- "linear.updateIssue" { id (uuid or identifier like "ENG-123"), stateName?, priority?, assigneeEmail? (null unassigns), title? } -> { id, identifier, url }
+- "linear.comment" { issueId, body (markdown) } -> { id }`,
+  notion: `- "notion.createPage" { sourceKey (a Notion source of this app), properties: { "<property name or column>": plain value } } -> { id, url }
+- "notion.updatePage" { pageId (the row's notion_url works), properties } -> { id, url }. Values: text, number, true/false, "YYYY-MM-DD", a select/status option name, an array for multi-select.`,
+  sheets: `- "sheets.appendRow" { sourceKey (a sheet source of this app), row: { <column>: value } } -> { updatedRange }
+- "sheets.updateRow" { sourceKey, match: { column, value }, set: { <column>: value } } -> { updated: number of rows }. Match on a unique column (an id or name).`,
+};
+
+export function actionsDoc(providers: (keyof typeof ACTION_DOCS)[]): string {
+  if (!providers.length) return "";
+  return `WRITE-BACK (await tembak.action(name, input) -> result): changes the team's connected tools, as the workspace's connection (every write is logged with the teammate who made it). Notion and sheet actions only work on the app's own data sources.
+${providers.map((p) => ACTION_DOCS[p]).join("\n")}
+Put every write behind an explicit button, disable it and show a pending state while it runs, then report success (link to the returned url when there is one) or show the error message (it's written for people). After a write, reload the affected data with tembak.data.`;
+}
+
 export const BUILD_SYSTEM = `You are Tembak's app builder. You write ONE complete, self-contained HTML file for a small web app used by a non-technical team. It must work the moment it loads.
 
 OUTPUT FORMAT
@@ -91,6 +110,8 @@ export function buildPrompt(input: {
   sourceKeys: string[];
   rules?: string;
   skill?: { name: string; body: string };
+  /** actionsDoc() for the workspace's connected providers. */
+  actions?: string;
 }): string {
   return `Build this app.
 
@@ -100,7 +121,7 @@ BRIEF:
 ${input.brief}
 ${input.skill ? `\nRECIPE (${input.skill.name}):\n${input.skill.body}\n` : ""}${input.rules ? `\nTEAM RULES (always follow):\n${input.rules}\n` : ""}
 DATA SOURCES TO USE: ${input.sourceKeys.length ? input.sourceKeys.map((k) => `"${k}"`).join(", ") : "none (embed sample data)"}
-
+${input.actions ? `\n${input.actions}\n` : ""}
 Available data sources (columns and sample rows):
 ${input.sources}
 
@@ -116,6 +137,8 @@ export function revisePrompt(input: {
   sourceKeys: string[];
   transcript: string;
   rules?: string;
+  /** actionsDoc() for the workspace's connected providers. */
+  actions?: string;
 }): string {
   return `Revise the existing app "${input.title}". Return the COMPLETE updated HTML document (not a diff). Keep everything that works and wasn't asked to change, including the overall design. If the app doesn't use the UI kit yet, you may switch parts you touch to it. Update the tembak:summary comment to describe what changed in this revision.
 
@@ -123,7 +146,7 @@ REQUESTED CHANGES:
 ${input.instructions}
 ${input.rules ? `\nTEAM RULES (always follow):\n${input.rules}\n` : ""}
 DATA SOURCES THE APP MAY USE: ${input.sourceKeys.length ? input.sourceKeys.map((k) => `"${k}"`).join(", ") : "none"}
-
+${input.actions ? `\n${input.actions}\n` : ""}
 Available data sources:
 ${input.sources}
 

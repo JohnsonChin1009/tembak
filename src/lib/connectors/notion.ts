@@ -15,9 +15,9 @@ const MAX_PAGES = MAX_ROWS / 100;
 
 type NotionConfig = Extract<SourceConfig, { kind: "notion" }>;
 
-async function request(token: string, path: string, body?: unknown): Promise<unknown> {
+export async function request(token: string, path: string, body?: unknown, method?: "PATCH"): Promise<unknown> {
   const res = await fetch(`${API}${path}`, {
-    method: body === undefined ? "GET" : "POST",
+    method: method ?? (body === undefined ? "GET" : "POST"),
     headers: {
       authorization: `Bearer ${token}`,
       "notion-version": VERSION,

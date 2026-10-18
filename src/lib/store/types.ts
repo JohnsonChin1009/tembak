@@ -15,6 +15,7 @@ import type {
   User,
   Workspace,
 } from "@/lib/types";
+import type { ActionRecord } from "@/lib/types";
 
 export type MessageListener = (messages: Message[], initial: boolean) => void;
 
@@ -103,4 +104,9 @@ export interface Store {
   listSkills(workspaceId: string): Promise<Skill[]>;
   upsertSkill(skill: Skill): Promise<void>;
   deleteSkill(workspaceId: string, id: string): Promise<void>;
+
+  /** Audit trail of tembak.action writes (workspaces/{wid}/actions/{id}). */
+  addActionRecord(record: ActionRecord): Promise<void>;
+  /** Most recent first. */
+  listActionRecords(workspaceId: string, limit?: number): Promise<ActionRecord[]>;
 }
