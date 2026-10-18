@@ -10,6 +10,20 @@ export function runtimeScript({ appId, version, apiBase, token }: RuntimeOptions
   const cfg = JSON.stringify({ appId, version, api: apiBase.replace(/\/$/, ""), token: token ?? null }).replace(/</g, "\\u003c");
   return `<script>(function(){
 var C=${cfg};
+// An uncaught error otherwise leaves a blank white page: say what broke instead.
+function oops(msg){
+  if (document.getElementById("tembak-error")) return;
+  var d = document.createElement("div");
+  d.id = "tembak-error";
+  d.setAttribute("role", "alert");
+  d.title = "Dismiss";
+  d.style.cssText = "position:fixed;left:12px;right:12px;bottom:12px;z-index:2147483647;padding:10px 14px;border-radius:10px;background:#fef2f2;color:#991b1b;border:1px solid #fecaca;font:13px/1.45 system-ui,sans-serif;cursor:pointer";
+  d.textContent = "This app hit an error: " + msg + ". Ask @tembak to fix it.";
+  d.onclick = function(){ d.remove(); };
+  (document.body || document.documentElement).appendChild(d);
+}
+window.addEventListener("error", function(e){ oops(e.message || "script error"); });
+window.addEventListener("unhandledrejection", function(e){ var r = e.reason; oops(r && r.message ? r.message : String(r)); });
 function req(path, init){
   init = Object.assign({ credentials: "omit" }, init);
   if (C.token) init.headers = Object.assign({ authorization: "Bearer " + C.token }, init.headers);
