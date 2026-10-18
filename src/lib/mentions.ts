@@ -11,8 +11,7 @@ export function stripMention(text: string): string {
 }
 
 // Code spans and blocks stay literal, so tags inside them don't count (as in rich-text).
-const CODE_RE = /```[\s\S]*?```|`[^`
-]*`/g;
+const CODE_RE = /```[\s\S]*?```|`[^`\n]*`/g;
 
 /** Uids tagged as "<@uid>" in a message, once each. */
 export function taggedUids(text: string): string[] {
