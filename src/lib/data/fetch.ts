@@ -152,6 +152,11 @@ export async function fetchRows(config: SourceConfig, workspaceId?: string): Pro
   }
 }
 
+/** Drops cached rows for a source, e.g. after an app wrote to it with tembak.action. */
+export function invalidateSourceRows(sourceId: string) {
+  for (const key of cache.keys()) if (key.startsWith(`${sourceId}:`)) cache.delete(key);
+}
+
 /** Rows for a stored source, cached briefly so dashboards don't hammer upstream APIs. */
 export async function sourceRows(source: Source): Promise<Row[]> {
   const key = `${source.id}:${source.updatedAt}`;

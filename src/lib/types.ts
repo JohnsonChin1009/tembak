@@ -215,3 +215,18 @@ export type Skill = {
   createdBy: string;
   updatedAt: number;
 };
+
+/** Audit trail for tembak.action: one record per write an app attempted. */
+export type ActionRecord = {
+  id: string;
+  workspaceId: string;
+  appId: string;
+  uid: string;
+  /** e.g. "linear.createIssue". */
+  name: string;
+  /** The input as JSON, cut to 2 KB. */
+  input: string;
+  ok: boolean;
+  error?: string;
+  at: number;
+};

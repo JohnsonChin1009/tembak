@@ -25,7 +25,8 @@ Share to channel: add a "Share to channel" button in the header that tembak.post
 Layout: header with counts per status as ui.kpis, a ui.form to add an item (wide title field, a status select, an owner field of type "member", a date if relevant), then a ui.segmented status filter and a ui.table.
 Created by: save created_by = (await tembak.me()).name on each new item. Add a "Mine" filter (owner or created_by equals me().name).
 Table: columns with render functions for a status badge (.tk-badge), the owner via ui.avatar(null, { name: owner }, { name: true }), and row actions (a small .tk-btn-ghost "Done"/"Delete" calling items.update / items.remove, then re-render).
-Seed: if the collection is empty on first load and the conversation mentions concrete items, add them once so the tracker isn't empty.`,
+Seed: if the collection is empty on first load and the conversation mentions concrete items, add them once so the tracker isn't empty.
+Sheet sync (optional): if the app's source is a Google Sheet and WRITE-BACK lists sheets actions, also add each new item to the sheet with tembak.action("sheets.appendRow", { sourceKey, row }) using the sheet's real column names; show a small "Synced to sheet" / error note, and never lose the item if the sync fails.`,
   },
   {
     name: "signup-form",
@@ -54,7 +55,8 @@ Share to channel: add a "Share to channel" button next to Print that tembak.post
 KPIs: open issues (state_type not completed/canceled), completed in the last 14 days, overdue (due_date < today and open), urgent+high open.
 Charts: hbar of open issues by assignee; bar of issues by state (ordered backlog, unstarted, started, completed); line of completed per week (x completed_at, bucket "week", agg "count").
 Table: open issues sorted by priority then due_date; render identifier as a link to url (target _blank).
-Filters: team and cycle via ui.select.`,
+Filters: team and cycle via ui.select.
+Write-back (only if WRITE-BACK lists linear actions): a "New issue" ui.form (title, team select from the rows' team values, priority select, optional description) calling tembak.action("linear.createIssue", ...) and showing a link to the returned url; and a per-row state ui.select (states seen in the rows) calling tembak.action("linear.updateIssue", { id: identifier, stateName }). Disable controls while pending, show errors with ui.error, then reload the data.`,
   },
   {
     name: "notion-content-calendar",

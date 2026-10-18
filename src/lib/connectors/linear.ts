@@ -13,11 +13,11 @@ const MAX_ROWS = 1000;
 type LinearConfig = Extract<SourceConfig, { kind: "linear" }>;
 
 /** OAuth tokens go as Bearer; personal API keys go bare. */
-function authHeader(token: string, conn: Pick<Connection, "authType">): string {
+export function authHeader(token: string, conn: Pick<Connection, "authType">): string {
   return conn.authType === "oauth" ? `Bearer ${token}` : token;
 }
 
-async function gql<T>(auth: string, query: string, variables: Record<string, unknown> = {}): Promise<T> {
+export async function gql<T>(auth: string, query: string, variables: Record<string, unknown> = {}): Promise<T> {
   const res = await fetch(GRAPHQL, {
     method: "POST",
     headers: { authorization: auth, "content-type": "application/json" },
@@ -49,7 +49,8 @@ export function linearAuthorizeUrl(clientId: string, redirectUri: string, state:
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: "code",
-    scope: "read",
+    // write: apps can create and update issues (tembak.action, src/lib/actions).
+    scope: "read,write",
     state,
     prompt: "consent",
   });

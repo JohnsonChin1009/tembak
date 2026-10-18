@@ -18,6 +18,7 @@ import type {
   User,
   Workspace,
 } from "@/lib/types";
+import type { ActionRecord } from "@/lib/types";
 import { nextThread } from "@/lib/threads";
 import { DEMO_WORKSPACE_ID, type MessageListener, type Store } from "./types";
 
@@ -321,5 +322,13 @@ export class FirestoreStore implements Store {
   }
   async deleteSkill(workspaceId: string, id: string) {
     await this.ws(workspaceId).collection("skills").doc(id).delete();
+  }
+
+  async addActionRecord(record: ActionRecord) {
+    await this.ws(record.workspaceId).collection("actions").doc(record.id).set(record);
+  }
+  async listActionRecords(workspaceId: string, limit = 50) {
+    const snap = await this.ws(workspaceId).collection("actions").orderBy("at", "desc").limit(limit).get();
+    return snap.docs.map((d) => d.data() as ActionRecord);
   }
 }

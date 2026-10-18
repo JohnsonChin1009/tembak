@@ -25,7 +25,7 @@ function once(fn){ var p = null; return function(){ return p || (p = fn().catch(
 window.tembak = {
   appId: C.appId,
   version: C.version,
-  data: function(key){ return req("/api/public/data/" + enc(C.appId) + "/" + enc(key)); },
+  data: function(key){ return req("/api/public/data/" + enc(C.appId) + "/" + enc(key), C.wrote ? { cache: "no-store" } : undefined); },
   kv: {
     get: function(key){ return req("/api/public/kv/" + enc(C.appId) + "/" + enc(key)).then(function(b){ return b ? b.value : null; }); },
     set: function(key, value){ return req("/api/public/kv/" + enc(C.appId) + "/" + enc(key), { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ value: value }) }).then(function(){}); }
@@ -40,6 +40,11 @@ window.tembak.post = function(text, opts){
 window.tembak.ask = function(prompt, o){
   o = o || {};
   return rt("/ask", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ prompt: prompt, data: o.data, json: !!o.json, schema: o.schema }) }).then(function(b){ return b.answer; });
+};
+// Writes to connected tools (src/lib/actions). After one, data() skips the
+// browser's HTTP cache so the app sees its own change.
+window.tembak.action = function(name, input){
+  return rt("/action", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: name, input: input || {} }) }).then(function(r){ C.wrote = true; return r; });
 };
 })();</script><style>${UI_KIT_CSS}</style><script>${UI_KIT_JS}</script>`;
 }

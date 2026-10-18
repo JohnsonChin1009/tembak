@@ -1,5 +1,6 @@
 import "server-only";
 import type { FunctionDeclaration } from "@google/genai";
+import { availableActionProviders } from "@/lib/actions";
 import { addAppVersion, createApp } from "@/lib/apps";
 import { config } from "@/lib/config";
 import { sourceRows } from "@/lib/data/fetch";
@@ -10,7 +11,7 @@ import { currentVersion, describeSources, type AgentContext } from "./context";
 import { generateText } from "./gemini";
 import { extractHtml, InvalidHtmlError } from "./html";
 import { mockBuild, pickSource } from "./mock";
-import { BUILD_SYSTEM, buildPrompt, repairPrompt, revisePrompt } from "./prompts";
+import { actionsDoc, BUILD_SYSTEM, buildPrompt, repairPrompt, revisePrompt } from "./prompts";
 import { dashboardTemplate } from "./template";
 
 const BUILD_TIMEOUT_MS = 150_000;
@@ -357,6 +358,7 @@ async function produce(input: ProduceInput): Promise<{ html: string; summary: st
   }
 
   const model = config().gemini.model;
+  const actions = actionsDoc(await availableActionProviders(ctx.trigger.workspaceId, ctx.sources));
   let prompt: string;
   if (input.revise) {
     const current = await currentVersion(input.revise.app);
@@ -368,6 +370,7 @@ async function produce(input: ProduceInput): Promise<{ html: string; summary: st
       sourceKeys: [...new Set([...input.revise.app.sourceKeys, ...sources.map((s) => s.key)])],
       transcript: ctx.transcript,
       rules: ctx.rules,
+      actions,
     });
   } else {
     prompt = buildPrompt({
@@ -378,6 +381,7 @@ async function produce(input: ProduceInput): Promise<{ html: string; summary: st
       sourceKeys: sources.map((s) => s.key),
       rules: ctx.rules,
       skill: input.build!.skill,
+      actions,
     });
   }
 
