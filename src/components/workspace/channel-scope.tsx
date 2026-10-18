@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Hash, Menu } from "lucide-react";
+import { Hash, Menu, Pencil } from "lucide-react";
 import { AppCard, AppChip } from "@/components/builder/app-card";
 import { BuilderPanel } from "@/components/builder/builder-panel";
 import { ChannelView } from "@/components/chat/channel-view";
@@ -12,6 +12,7 @@ import { JoinBanner } from "@/components/onboarding/join-banner";
 import { useOnboarding } from "@/components/onboarding/onboarding-context";
 import { GETTING_STARTED_CHANNEL, GETTING_STARTED_PROMPT } from "@/lib/onboarding";
 import type { App, AppRef, Channel, Message, User } from "@/lib/types";
+import { ChannelSettingsDialog } from "./manage-dialogs";
 import { usePanelWidth } from "./use-panel-width";
 import { useWorkspace } from "./workspace-context";
 
@@ -37,6 +38,7 @@ export function ChannelScope({
   openRequest,
   onOpenNav,
   onAppsStale,
+  onChannelChanged,
   renderPanelActions,
 }: {
   channel: Channel;
@@ -48,9 +50,13 @@ export function ChannelScope({
   openRequest?: { appId: string; nonce: number } | null;
   onOpenNav?: () => void;
   onAppsStale: () => void;
+  onChannelChanged?: (channel: Channel) => void;
   renderPanelActions?: (app: App, version: number) => React.ReactNode;
 }) {
-  const { base } = useWorkspace();
+  const { base, workspace } = useWorkspace();
+  const [editing, setEditing] = useState(false);
+  // In the shared demo only maintainers can rename; in team workspaces anyone can.
+  const canEdit = !!onChannelChanged && (!workspace.open || workspace.role === "owner");
   const onboarding = useOnboarding();
   const [open, setOpenState] = useState<OpenApp | null>(initialOpen);
   const [handledRequest, setHandledRequest] = useState(openRequest?.nonce);
@@ -133,9 +139,22 @@ export function ChannelScope({
             <Menu className="size-4" />
           </button>
           <Hash className="size-4 text-faint" />
-          <h1 className="font-semibold">{channel.name}</h1>
-          {channel.topic ? <p className="ml-2 truncate text-sm text-faint">{channel.topic}</p> : null}
+          <h1 className="truncate font-semibold">{channel.name}</h1>
+          {channel.topic ? <p className="ml-2 hidden truncate text-sm text-faint sm:block">{channel.topic}</p> : null}
+          {canEdit ? (
+            <button
+              onClick={() => setEditing(true)}
+              className="shrink-0 rounded-md p-1.5 text-faint hover:bg-hover hover:text-fg"
+              aria-label="Channel settings"
+              title="Rename channel"
+            >
+              <Pencil className="size-3.5" />
+            </button>
+          ) : null}
         </header>
+        {editing && onChannelChanged ? (
+          <ChannelSettingsDialog channel={channel} onSaved={onChannelChanged} onClose={() => setEditing(false)} />
+        ) : null}
         <ChannelView
           channel={channel}
           messages={messages}
