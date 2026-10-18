@@ -11,7 +11,8 @@ export async function GET(_req: Request, ctx: RouteContext<"/api/public/data/[ap
   if (!app) return publicError(404, "Unknown app");
   // Apps can only read the sources they were built with.
   if (!app.sourceKeys.includes(key)) return publicError(403, `This app isn't connected to "${key}"`);
-  const source = await store.getSourceByKey(key);
+  // Sources are looked up in the app's own workspace only.
+  const source = await store.getSourceByKey(app.workspaceId, key);
   if (!source) return publicError(404, `Data source "${key}" was removed`);
   try {
     const rows = await sourceRows(source);

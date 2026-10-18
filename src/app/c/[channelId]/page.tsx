@@ -1,37 +1,11 @@
-import { notFound, redirect } from "next/navigation";
-import { Workspace } from "@/components/workspace/workspace";
-import { getSessionUser } from "@/lib/auth/session";
-import { config } from "@/lib/config";
-import { redact } from "@/lib/data/sources";
-import { getStore } from "@/lib/store";
+import { redirect } from "next/navigation";
+import { DEMO_WORKSPACE_ID } from "@/lib/workspaces";
 
-export default async function ChannelPage({ params, searchParams }: PageProps<"/c/[channelId]">) {
+/** Links from before workspaces existed point into the demo. */
+export default async function LegacyChannelPage({ params, searchParams }: PageProps<"/c/[channelId]">) {
   const [{ channelId }, query] = await Promise.all([params, searchParams]);
-  const user = await getSessionUser();
-  if (!user) redirect(`/login?next=/c/${channelId}`);
-
-  const store = await getStore();
-  const [channels, apps, sources] = await Promise.all([
-    store.listChannels(),
-    store.listApps(),
-    store.listSources(),
-  ]);
-  if (!channels.some((c) => c.id === channelId)) notFound();
-
-  const appId = typeof query.app === "string" ? query.app : null;
-  const v = typeof query.v === "string" ? Number(query.v) : undefined;
-
-  return (
-    <Workspace
-      user={user}
-      channels={channels}
-      apps={apps}
-      sources={sources.map(redact)}
-      serviceAccountEmail={config().serviceAccountEmail}
-      channelId={channelId}
-      appsUrl={config().appsUrl}
-      agentMode={config().agentMode}
-      initialOpen={appId ? { appId, version: v && v > 0 ? v : undefined } : null}
-    />
-  );
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(query)) if (typeof v === "string") qs.set(k, v);
+  const suffix = qs.size ? `?${qs}` : "";
+  redirect(`/w/${DEMO_WORKSPACE_ID}/c/${encodeURIComponent(channelId)}${suffix}`);
 }

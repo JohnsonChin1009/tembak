@@ -5,10 +5,47 @@ export type User = {
   name: string;
   email?: string;
   photoUrl?: string;
+  /** Workspaces this user belongs to (avoids a collection-group query). */
+  workspaceIds?: string[];
+  lastWorkspaceId?: string;
+};
+
+export type Workspace = {
+  id: string;
+  /** Unique, used in URLs: /w/:slug */
+  slug: string;
+  name: string;
+  createdAt: number;
+  createdBy: string;
+  /** Rotate to revoke old invite links. */
+  inviteToken: string;
+  /** Any signed-in user can join (the Demo workspace). */
+  open?: boolean;
+};
+
+export type Role = "owner" | "member";
+
+export type Member = {
+  uid: string;
+  role: Role;
+  name: string;
+  email?: string;
+  photoUrl?: string;
+  joinedAt: number;
+};
+
+/** What the client gets about the current workspace. */
+export type WorkspaceInfo = {
+  id: string;
+  slug: string;
+  name: string;
+  open: boolean;
+  role: Role;
 };
 
 export type Channel = {
   id: string;
+  workspaceId: string;
   name: string;
   topic?: string;
   createdAt: number;
@@ -25,6 +62,7 @@ export type AppRef = { appId: string; version: number };
 
 export type Message = {
   id: string;
+  workspaceId: string;
   channelId: string;
   createdAt: number;
   author: MessageAuthor;
@@ -41,6 +79,8 @@ export type Message = {
 
 export type App = {
   id: string;
+  /** Apps created before workspaces have none; the store fills in the demo id. */
+  workspaceId: string;
   slug: string;
   title: string;
   channelId: string;
@@ -77,6 +117,8 @@ export type SourceConfig =
 
 export type Source = {
   id: string;
+  workspaceId: string;
+  /** Unique within a workspace. */
   key: string;
   name: string;
   kind: SourceKind;

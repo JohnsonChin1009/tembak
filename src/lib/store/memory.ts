@@ -4,15 +4,24 @@ import type {
   AppVersion,
   AppVersionMeta,
   Channel,
+  Member,
   Message,
   Source,
   User,
+  Workspace,
 } from "@/lib/types";
-import type { MessageListener, Store } from "./types";
+import { DEMO_WORKSPACE_ID, type MessageListener, type Store } from "./types";
+
+// Channels and messages are keyed by "<workspaceId>/<channelId>".
+const k = (workspaceId: string, id: string) => `${workspaceId}/${id}`;
+
+const withWorkspace = (app: App): App => ({ ...app, workspaceId: app.workspaceId ?? DEMO_WORKSPACE_ID });
 
 /** Process-local store for development. Data resets on server restart. */
 export class MemoryStore implements Store {
   private users = new Map<string, User>();
+  private workspaces = new Map<string, Workspace>();
+  private members = new Map<string, Map<string, Member>>();
   private channels = new Map<string, Channel>();
   private messages = new Map<string, Message[]>();
   private apps = new Map<string, App>();
@@ -28,54 +37,111 @@ export class MemoryStore implements Store {
     return this.users.get(uid) ?? null;
   }
 
-  async listChannels() {
-    return [...this.channels.values()].sort((a, b) => a.createdAt - b.createdAt);
+  async createWorkspace(workspace: Workspace) {
+    this.workspaces.set(workspace.id, workspace);
   }
-  async getChannel(id: string) {
-    return this.channels.get(id) ?? null;
+  async getWorkspace(id: string) {
+    return this.workspaces.get(id) ?? null;
   }
-  async createChannel(channel: Channel) {
-    this.channels.set(channel.id, channel);
+  async getWorkspaceBySlug(slug: string) {
+    return [...this.workspaces.values()].find((w) => w.slug === slug) ?? null;
+  }
+  async getWorkspaceByInvite(token: string) {
+    return [...this.workspaces.values()].find((w) => w.inviteToken === token) ?? null;
+  }
+  async updateWorkspace(id: string, patch: Partial<Workspace>) {
+    const ws = this.workspaces.get(id);
+    if (ws) this.workspaces.set(id, { ...ws, ...patch });
+  }
+  async addMember(workspaceId: string, member: Member) {
+    const list = this.members.get(workspaceId) ?? new Map<string, Member>();
+    list.set(member.uid, member);
+    this.members.set(workspaceId, list);
+    const user = this.users.get(member.uid);
+    const ids = new Set(user?.workspaceIds ?? []).add(workspaceId);
+    this.users.set(member.uid, { uid: member.uid, name: member.name, ...user, workspaceIds: [...ids] });
+  }
+  async getMember(workspaceId: string, uid: string) {
+    return this.members.get(workspaceId)?.get(uid) ?? null;
+  }
+  async listMembers(workspaceId: string) {
+    return [...(this.members.get(workspaceId)?.values() ?? [])].sort((a, b) => a.joinedAt - b.joinedAt);
+  }
+  async listWorkspacesForUser(uid: string) {
+    const ids = this.users.get(uid)?.workspaceIds ?? [];
+    return ids.map((id) => this.workspaces.get(id)).filter((w): w is Workspace => !!w);
+  }
+  async clearWorkspace(workspaceId: string) {
+    const prefix = `${workspaceId}/`;
+    for (const key of [...this.channels.keys()]) if (key.startsWith(prefix)) this.channels.delete(key);
+    for (const key of [...this.messages.keys()]) if (key.startsWith(prefix)) this.messages.delete(key);
+    for (const [id, s] of this.sources) if (s.workspaceId === workspaceId) this.sources.delete(id);
+    for (const [id, a] of this.apps) {
+      if (withWorkspace(a).workspaceId !== workspaceId) continue;
+      this.apps.delete(id);
+      this.versions.delete(id);
+      for (const key of [...this.kv.keys()]) if (key.startsWith(`${id}/`)) this.kv.delete(key);
+    }
   }
 
-  async listMessages(channelId: string, limit = 100) {
-    return structuredClone((this.messages.get(channelId) ?? []).slice(-limit));
+  async listChannels(workspaceId: string) {
+    return [...this.channels.values()]
+      .filter((c) => c.workspaceId === workspaceId)
+      .sort((a, b) => a.createdAt - b.createdAt);
   }
-  async getMessage(channelId: string, id: string) {
-    const m = this.messages.get(channelId)?.find((x) => x.id === id);
+  async getChannel(workspaceId: string, id: string) {
+    return this.channels.get(k(workspaceId, id)) ?? null;
+  }
+  async createChannel(channel: Channel) {
+    this.channels.set(k(channel.workspaceId, channel.id), channel);
+  }
+
+  async listMessages(workspaceId: string, channelId: string, limit = 100) {
+    return structuredClone((this.messages.get(k(workspaceId, channelId)) ?? []).slice(-limit));
+  }
+  async getMessage(workspaceId: string, channelId: string, id: string) {
+    const m = this.messages.get(k(workspaceId, channelId))?.find((x) => x.id === id);
     return m ? structuredClone(m) : null;
   }
   async addMessage(message: Message) {
-    const list = this.messages.get(message.channelId) ?? [];
+    const key = k(message.workspaceId, message.channelId);
+    const list = this.messages.get(key) ?? [];
     list.push(message);
     list.sort((a, b) => a.createdAt - b.createdAt);
-    this.messages.set(message.channelId, list);
-    this.bus.emit(message.channelId, structuredClone(message));
+    this.messages.set(key, list);
+    this.bus.emit(key, structuredClone(message));
   }
-  async updateMessage(channelId: string, id: string, patch: Partial<Message>) {
-    const list = this.messages.get(channelId) ?? [];
+  async updateMessage(workspaceId: string, channelId: string, id: string, patch: Partial<Message>) {
+    const key = k(workspaceId, channelId);
+    const list = this.messages.get(key) ?? [];
     const i = list.findIndex((m) => m.id === id);
     if (i < 0) return;
     list[i] = { ...list[i], ...patch };
-    this.bus.emit(channelId, structuredClone(list[i]));
+    this.bus.emit(key, structuredClone(list[i]));
   }
-  subscribeMessages(channelId: string, listener: MessageListener) {
+  subscribeMessages(workspaceId: string, channelId: string, listener: MessageListener) {
+    const key = k(workspaceId, channelId);
     const onMessage = (m: Message) => listener([m], false);
-    this.bus.on(channelId, onMessage);
-    void this.listMessages(channelId).then((ms) => listener(ms, true));
+    this.bus.on(key, onMessage);
+    void this.listMessages(workspaceId, channelId).then((ms) => listener(ms, true));
     return () => {
-      this.bus.off(channelId, onMessage);
+      this.bus.off(key, onMessage);
     };
   }
 
-  async listApps() {
-    return [...this.apps.values()].sort((a, b) => b.updatedAt - a.updatedAt);
+  async listApps(workspaceId: string) {
+    return [...this.apps.values()]
+      .map(withWorkspace)
+      .filter((a) => a.workspaceId === workspaceId)
+      .sort((a, b) => b.updatedAt - a.updatedAt);
   }
   async getApp(id: string) {
-    return this.apps.get(id) ?? null;
+    const app = this.apps.get(id);
+    return app ? withWorkspace(app) : null;
   }
   async getAppBySlug(slug: string) {
-    return [...this.apps.values()].find((a) => a.slug === slug) ?? null;
+    const app = [...this.apps.values()].find((a) => a.slug === slug);
+    return app ? withWorkspace(app) : null;
   }
   async createApp(app: App) {
     this.apps.set(app.id, app);
@@ -83,6 +149,15 @@ export class MemoryStore implements Store {
   async updateApp(id: string, patch: Partial<App>) {
     const app = this.apps.get(id);
     if (app) this.apps.set(id, { ...app, ...patch });
+  }
+  async adoptLegacyApps(workspaceId: string) {
+    let n = 0;
+    for (const [id, a] of this.apps) {
+      if (a.workspaceId) continue;
+      this.apps.set(id, { ...a, workspaceId });
+      n++;
+    }
+    return n;
   }
 
   async addVersion(version: AppVersion) {
@@ -111,19 +186,22 @@ export class MemoryStore implements Store {
     this.kv.set(`${appId}/${key}`, structuredClone(value));
   }
 
-  async listSources() {
-    return [...this.sources.values()].sort((a, b) => a.name.localeCompare(b.name));
+  async listSources(workspaceId: string) {
+    return [...this.sources.values()]
+      .filter((s) => s.workspaceId === workspaceId)
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
-  async getSource(id: string) {
-    return this.sources.get(id) ?? null;
+  async getSource(workspaceId: string, id: string) {
+    const s = this.sources.get(id);
+    return s?.workspaceId === workspaceId ? s : null;
   }
-  async getSourceByKey(key: string) {
-    return [...this.sources.values()].find((s) => s.key === key) ?? null;
+  async getSourceByKey(workspaceId: string, key: string) {
+    return [...this.sources.values()].find((s) => s.workspaceId === workspaceId && s.key === key) ?? null;
   }
   async upsertSource(source: Source) {
     this.sources.set(source.id, source);
   }
-  async deleteSource(id: string) {
-    this.sources.delete(id);
+  async deleteSource(workspaceId: string, id: string) {
+    if (this.sources.get(id)?.workspaceId === workspaceId) this.sources.delete(id);
   }
 }

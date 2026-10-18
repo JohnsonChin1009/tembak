@@ -9,7 +9,7 @@ next to the conversation that produced it.
 
 - Opens when a user clicks **Open** on an app card, or automatically for the
   user who triggered a build when it completes.
-- URL reflects state: `/c/:channelId?app=:appId&v=:n` (shareable, survives reload).
+- URL reflects state: `/w/:slug/c/:channelId?app=:appId&v=:n` (shareable, survives reload).
 - Header: app title, version switcher (v1...vN, newest default), status pill (Draft or Published),
   buttons: **Publish** / **Update live** (when viewing a newer version than the live one), **Copy link**, **Open**, close.
 - Tabs: **Preview** (default) | **Code** (read-only, monospace, line numbers, copy button).

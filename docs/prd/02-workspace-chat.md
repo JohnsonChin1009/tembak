@@ -30,6 +30,8 @@ Channel { id, name, topic?, createdAt, createdBy }
 
 ## API
 
+Since PRD 08 these live under the workspace: `/api/w/:ws/channels…` (`:ws` is the workspace slug).
+
 | Method | Path | Body / result |
 |---|---|---|
 | GET | `/api/channels` | `Channel[]` |

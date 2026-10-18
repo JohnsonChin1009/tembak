@@ -31,7 +31,7 @@ Built for the Google AI Builder Cup, in one day.
                          Cloud Run service "tembak" (Next.js, one container)
  Browser  ───────────►  ┌──────────────────────────────────────────────────┐
   - chat UI              │  UI (app router)          /api/*  route handlers │
-  - builder panel        │  SSE stream /api/channels/:id/stream             │
+  - builder panel        │  SSE /api/w/:ws/channels/:id/stream             │
   - iframe preview       │  Agent runner (Gemini via @google/genai)         │
                          │  App server  /a/:slug  (CSP sandbox, opaque orig)│
  apps.<domain> ───────►  │  Data proxy  /api/public/data/:appId/:source     │

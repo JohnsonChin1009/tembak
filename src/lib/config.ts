@@ -25,6 +25,8 @@ const schema = z.object({
   APP_URL: z.string().default("http://localhost:3000"),
   APPS_URL: z.string().optional(),
   ALLOWED_EMAIL_DOMAINS: csv,
+  // Maintainers of the Demo workspace. Emails, or "dev:<name>" for dev-mode sign-ins.
+  DEMO_OWNER_EMAILS: csv,
   SESSION_SECRET: z.string().default("tembak-dev-secret-change-me"),
   FIREBASE_WEB_API_KEY: z.string().optional(),
   FIREBASE_AUTH_DOMAIN: z.string().optional(),
@@ -65,6 +67,7 @@ function load() {
     appsHost: new URL(appsUrl).host,
     appHost: new URL(appUrl).host,
     allowedEmailDomains: env.ALLOWED_EMAIL_DOMAINS,
+    demoOwners: env.DEMO_OWNER_EMAILS,
     sessionSecret: env.SESSION_SECRET,
     firebaseWeb: env.FIREBASE_WEB_API_KEY
       ? {

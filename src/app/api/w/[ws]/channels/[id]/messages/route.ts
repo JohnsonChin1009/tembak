@@ -1,24 +1,27 @@
 import { after } from "next/server";
 import { z } from "zod";
-import { handle, HttpError, json, parseBody, requireUser } from "@/lib/api";
+import { handle, HttpError, json, parseBody } from "@/lib/api";
 import { startAgentRun } from "@/lib/agent/run";
 import { randomId } from "@/lib/ids";
 import { mentionsAgent } from "@/lib/mentions";
 import { getStore } from "@/lib/store";
 import type { Message } from "@/lib/types";
+import { requireMember } from "@/lib/workspaces";
 
 export const maxDuration = 300;
 
-export const GET = handle(async (req: Request, ctx: RouteContext<"/api/channels/[id]/messages">) => {
-  await requireUser();
-  const { id } = await ctx.params;
+type Ctx = RouteContext<"/api/w/[ws]/channels/[id]/messages">;
+
+export const GET = handle(async (req: Request, ctx: Ctx) => {
+  const { ws, id } = await ctx.params;
+  const { workspace } = await requireMember(ws);
   const limit = Math.min(Number(new URL(req.url).searchParams.get("limit") ?? 100) || 100, 200);
-  return json(await (await getStore()).listMessages(id, limit));
+  return json(await (await getStore()).listMessages(workspace.id, id, limit));
 });
 
-export const POST = handle(async (req: Request, ctx: RouteContext<"/api/channels/[id]/messages">) => {
-  const user = await requireUser();
-  const { id: channelId } = await ctx.params;
+export const POST = handle(async (req: Request, ctx: Ctx) => {
+  const { ws, id: channelId } = await ctx.params;
+  const { user, workspace } = await requireMember(ws);
   const body = await parseBody(
     req,
     z.object({
@@ -30,10 +33,15 @@ export const POST = handle(async (req: Request, ctx: RouteContext<"/api/channels
   );
 
   const store = await getStore();
-  if (!(await store.getChannel(channelId))) throw new HttpError(404, "Channel not found");
+  if (!(await store.getChannel(workspace.id, channelId))) throw new HttpError(404, "Channel not found");
+  if (body.appRef) {
+    const app = await store.getApp(body.appRef.appId);
+    if (app?.workspaceId !== workspace.id) throw new HttpError(404, "App not found");
+  }
 
   const message: Message = {
     id: body.id ?? randomId(),
+    workspaceId: workspace.id,
     channelId,
     createdAt: Date.now(),
     author: { kind: "user", uid: user.uid, name: user.name, photoUrl: user.photoUrl },

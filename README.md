@@ -19,9 +19,15 @@ pnpm install
 pnpm dev            # http://localhost:3000
 ```
 
-With no `.env.local`, Tembak uses an in-memory store (seeded with a demo
-workspace), name-only dev sign-in, and a mock agent that builds a real working
-dashboard. Open two browser windows with different names to see realtime chat.
+With no `.env.local`, Tembak uses an in-memory store, name-only dev sign-in, and
+a mock agent that builds a real working dashboard. After signing in you create a
+workspace (or open the seeded **Demo** at `/w/demo`). Copy the invite link from
+the workspace menu into a second browser window to see realtime chat between two people.
+
+Routes: `/w/:slug/c/:channel` is a workspace channel, `/new` creates a workspace,
+`/join/:token` accepts an invite, and `/a/:slug` serves a published app. To be a
+maintainer of the Demo workspace locally (it unlocks **Reset demo**), set
+`DEMO_OWNER_EMAILS=dev:<your name>` in `.env.local`.
 
 To use real Gemini locally, put `GEMINI_API_KEY=...` in `.env.local`. To use real
 Firestore, run `gcloud auth application-default login` and set `STORE=firestore`

@@ -33,6 +33,7 @@ export async function startAgentRun(trigger: Message): Promise<void> {
   const store = await getStore();
   const reply: Message = {
     id: randomId(),
+    workspaceId: trigger.workspaceId,
     channelId: trigger.channelId,
     createdAt: Date.now(),
     author: { kind: "agent" },
@@ -43,7 +44,7 @@ export async function startAgentRun(trigger: Message): Promise<void> {
     replyTo: trigger.id,
   };
   await store.addMessage(reply);
-  const update = (patch: Update) => store.updateMessage(reply.channelId, reply.id, patch);
+  const update = (patch: Update) => store.updateMessage(reply.workspaceId, reply.channelId, reply.id, patch);
 
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
@@ -65,7 +66,7 @@ export async function startAgentRun(trigger: Message): Promise<void> {
 
 async function run(trigger: Message, update: (patch: Update) => Promise<void>) {
   const createdBy = trigger.author.kind === "user" ? trigger.author.uid : "agent";
-  const linked = await sourcesFromMessage(trigger.text, createdBy);
+  const linked = await sourcesFromMessage(trigger.workspaceId, trigger.text, createdBy);
   if (linked.created.length || linked.failed.length) {
     await update({ statusLine: linked.created.length ? "Connected your sheet. Reading the conversation..." : "Reading the conversation..." });
   }
@@ -119,6 +120,7 @@ async function run(trigger: Message, update: (patch: Update) => Promise<void>) {
   const { html, summary, model } = await produce({ mode, ctx, sources, build: { title, brief } });
   const { app } = await createApp({
     title,
+    workspaceId: trigger.workspaceId,
     channelId: trigger.channelId,
     html,
     summary,
@@ -141,7 +143,7 @@ function resolveSources(keys: string[] | undefined, all: Source[]): Source[] {
 }
 
 async function geminiTriage(ctx: AgentContext): Promise<Triage> {
-  const channel = await (await getStore()).getChannel(ctx.trigger.channelId);
+  const channel = await (await getStore()).getChannel(ctx.trigger.workspaceId, ctx.trigger.channelId);
   const prompt = triagePrompt({
     channelName: channel?.name ?? ctx.trigger.channelId,
     transcript: ctx.transcript,
