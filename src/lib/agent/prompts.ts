@@ -39,7 +39,7 @@ ${input.skills}
 ${input.targetAppId ? `The user sent this from the app panel for app id ${input.targetAppId}, so it is a revision of that app unless it's clearly just a question.\n\n` : ""}${input.requesterName} just tagged you: "${input.request}"`;
 }
 
-export const UI_KIT_DOC = `UI KIT (window.tembak.ui, already loaded with its stylesheet; prefer it over hand-written CSS and charts)
+export const UI_KIT_DOC = `UI KIT (window.tembak.ui, also the global \`ui\`, already loaded with its stylesheet; prefer it over hand-written CSS and charts)
 - Put class="tk" on <body>. Layout classes: tk-page (centered container), tk-header, tk-title, tk-sub, tk-stack (vertical gap), tk-row (wrapping flex row), tk-grid, tk-cols-2, tk-cols-3, tk-span-2, tk-card, tk-card-title, tk-muted, tk-badge, tk-btn, tk-btn-primary, tk-btn-ghost, tk-input, tk-select, tk-textarea, tk-foot. Write only small extra CSS in a <style> when needed.
 - ui.theme({ accent: "#hex", dark?: false, currency?: "USD" })
 - ui.kpis(el, [{ label, value, format?: "number"|"currency"|"percent"|fn, delta?: fraction vs previous period, invert?: bool, hint? }])
@@ -49,7 +49,7 @@ export const UI_KIT_DOC = `UI KIT (window.tembak.ui, already loaded with its sty
 - ui.form(el, { fields: [{ name, label?, type?: "text"|"number"|"date"|"email"|"select"|"textarea"|"checkbox"|"member", options?, required?, placeholder?, wide? }], submitLabel?, onSubmit(values) }) -> { values(), set(v), reset() }. "member" is a teammate picker (value = their name): use it for owner/assignee fields.
 - ui.avatar(el | null, person, { size?, name?: true }) -> Node: photo or initials for a person from tembak.me()/members() (pass null to get the node, e.g. in a table render)
 - ui.tabs(el, [{ label, render(panel) }]); ui.loading(el, text?); ui.error(el, err); ui.empty(el, text?)
-- ui.collection(key) -> { all(), add(item), update(id, patch), remove(id), replace(items) }: a shared list saved with tembak.kv (items get id and created_at)
+- ui.collection(key) -> { all(), add(item), update(id, patch), remove(id), replace(items) }: a shared list saved with tembak.kv (items get id and created_at). Every method is async and returns a Promise: const items = await list.all(); await list.add(item), then re-render.
 - ui.group(rows, by, metrics[], op) -> [{ [by], count, ...metrics }]; ui.sum(rows, col); ui.avg(rows, col); ui.uniq(rows, col); ui.week(date); ui.month(date)
 - ui.format.number|compact|currency|percent(fraction)|date|label(col); ui.download(filename, rows) exports CSV; ui.h(tag, props, ...children) creates elements
 - el can be a selector string or an element.`;
