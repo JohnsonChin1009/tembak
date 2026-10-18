@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Check, ChevronsUpDown, Copy, LoaderCircle, Plus, RotateCcw, UserPlus, X } from "lucide-react";
+import { Bot, Check, ChevronsUpDown, Copy, LoaderCircle, Plus, RotateCcw, UserPlus, X } from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { Modal } from "@/components/data/data-dialog";
 import type { Member } from "@/lib/types";
+import { AgentSettingsDialog } from "./agent-settings";
 import { useWorkspace } from "./workspace-context";
 
 export type WorkspaceLink = { slug: string; name: string };
@@ -15,6 +16,7 @@ export function WorkspaceMenu({ workspaces }: { workspaces: WorkspaceLink[] }) {
   const { workspace } = useWorkspace();
   const [open, setOpen] = useState(false);
   const [inviting, setInviting] = useState(false);
+  const [settings, setSettings] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -70,10 +72,20 @@ export function WorkspaceMenu({ workspaces }: { workspaces: WorkspaceLink[] }) {
           >
             <UserPlus className="size-3.5" /> {workspace.open ? "Members" : "Invite people"}
           </button>
+          <button
+            className={item}
+            onClick={() => {
+              setOpen(false);
+              setSettings(true);
+            }}
+          >
+            <Bot className="size-3.5" /> Agent settings
+          </button>
         </div>
       ) : null}
 
       {inviting ? <InviteDialog onClose={() => setInviting(false)} /> : null}
+      {settings ? <AgentSettingsDialog onClose={() => setSettings(false)} /> : null}
     </div>
   );
 }
